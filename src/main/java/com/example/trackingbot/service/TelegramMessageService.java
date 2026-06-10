@@ -2,6 +2,7 @@ package com.example.trackingbot.service;
 
 import com.example.trackingbot.config.TelegramBotProperties;
 import com.example.trackingbot.dto.SendMessageRequest;
+import com.example.trackingbot.dto.SendPhotoRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -22,6 +23,14 @@ public class TelegramMessageService {
         restClient.post()
                 .uri("/sendMessage")
                 .body(new SendMessageRequest(chatId, text))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void sendPhoto(Long chatId, String photoUrl, String caption) {
+        restClient.post()
+                .uri("/sendPhoto")
+                .body(new SendPhotoRequest(chatId, photoUrl, caption))
                 .retrieve()
                 .toBodilessEntity();
     }
