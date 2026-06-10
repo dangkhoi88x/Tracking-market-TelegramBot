@@ -62,6 +62,24 @@ public class AlertService {
         );
     }
 
+    public String createNotification(Long chatId, String rawArguments) {
+        NotificationCommand command = parseNotificationCommand(rawArguments);
+        String symbol = cryptoPriceService.normalizeSymbol(command.symbol());
+
+        if (cryptoPriceService.findCoinId(symbol).isEmpty()) {
+            return unsupportedSymbolMessage();
+        }
+
+        BigDecimal currentPrice = cryptoPriceService.getCurrentPrice(symbol).priceUsd();
+        String operator = currentPrice.compareTo(command.targetPrice()) <= 0 ? ">=" : "<=";
+
+        return createAlert(chatId, "%s %s %s".formatted(
+                symbol,
+                operator,
+                command.targetPrice().toPlainString()
+        ));
+    }
+
     public String getHelpMessage() {
         return """
                 Cach dung:
@@ -220,6 +238,24 @@ public class AlertService {
         return new AlertCommand(symbol, operator, targetPrice);
     }
 
+    private NotificationCommand parseNotificationCommand(String rawArguments) {
+        if (rawArguments == null || rawArguments.isBlank()) {
+            throw new IllegalArgumentException("Missing notification arguments");
+        }
+
+        String[] parts = rawArguments.trim().split("\\s+");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid notification format");
+        }
+
+        BigDecimal targetPrice = parsePrice(parts[1]);
+        if (targetPrice.signum() <= 0) {
+            throw new IllegalArgumentException("Notification target price must be positive");
+        }
+
+        return new NotificationCommand(parts[0], targetPrice);
+    }
+
     private BigDecimal parsePrice(String rawPrice) {
         try {
             return new BigDecimal(rawPrice.replace(",", ""));
@@ -251,6 +287,12 @@ public class AlertService {
     private record AlertCommand(
             String symbol,
             String operator,
+            BigDecimal targetPrice
+    ) {
+    }
+
+    private record NotificationCommand(
+            String symbol,
             BigDecimal targetPrice
     ) {
     }

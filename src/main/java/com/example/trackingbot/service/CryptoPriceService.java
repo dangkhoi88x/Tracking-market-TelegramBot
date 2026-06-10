@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -28,10 +26,6 @@ public class CryptoPriceService {
             "XRP", "ripple",
             "DOGE", "dogecoin"
     );
-
-    private static final DateTimeFormatter UPDATED_AT_FORMATTER = DateTimeFormatter
-            .ofPattern("dd/MM/yyyy HH:mm")
-            .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
 
     private final CoinGeckoClient coinGeckoClient;
     private final CacheManager cacheManager;
@@ -129,16 +123,19 @@ public class CryptoPriceService {
     private String formatPriceMessage(CryptoPrice price, boolean fromCache) {
         return """
                 %s
-                Gia hien tai: %s USD
-                24h: %s%%
-                Cap nhat: %s
-                Nguon: %s
+                Price %s
+                24h %s%% Vol %s
+                High %s (%s%%)
+                Low %s (%s%%)
                 """.formatted(
                 price.symbol(),
                 formatMoney(price.priceUsd()),
                 formatSignedPercent(price.changePercent24h()),
-                UPDATED_AT_FORMATTER.format(price.lastUpdatedAt()),
-                fromCache ? "cache 60 giay" : "CoinGecko API"
+                formatCompactMoney(price.totalVolumeUsd()),
+                formatMoney(price.high24h()),
+                formatDistanceFromCurrent(price.priceUsd(), price.high24h()),
+                formatMoney(price.low24h()),
+                formatDistanceFromCurrent(price.priceUsd(), price.low24h())
         );
     }
 
@@ -148,6 +145,37 @@ public class CryptoPriceService {
         }
 
         return "%,.2f".formatted(value);
+    }
+
+    private String formatCompactMoney(BigDecimal value) {
+        if (value == null) {
+            return "N/A";
+        }
+
+        BigDecimal billion = BigDecimal.valueOf(1_000_000_000L);
+        BigDecimal million = BigDecimal.valueOf(1_000_000L);
+
+        if (value.compareTo(billion) >= 0) {
+            return value.divide(billion, 2, RoundingMode.HALF_UP) + "B";
+        }
+
+        if (value.compareTo(million) >= 0) {
+            return value.divide(million, 2, RoundingMode.HALF_UP) + "M";
+        }
+
+        return "%,.0f".formatted(value);
+    }
+
+    private String formatDistanceFromCurrent(BigDecimal currentPrice, BigDecimal targetPrice) {
+        if (currentPrice == null || targetPrice == null || currentPrice.signum() == 0) {
+            return "N/A";
+        }
+
+        BigDecimal distance = currentPrice.subtract(targetPrice)
+                .divide(currentPrice, 6, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+
+        return formatSignedPercent(distance);
     }
 
     private String formatSignedPercent(BigDecimal value) {

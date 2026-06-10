@@ -1,0 +1,13 @@
+{
+  "name": "tracking-market-telegrambot-renderer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node renderer for Telegram crypto idea chart screenshots.",
+  "scripts": {
+    "install:browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "lightweight-charts": "^4.2.3",
+    "playwright": "^1.57.0"
+  }
+}

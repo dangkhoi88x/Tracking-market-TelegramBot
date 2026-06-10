@@ -21,6 +21,9 @@ public class TelegramCommandService {
     private final TrendingCryptoService trendingCryptoService;
     private final PortfolioService portfolioService;
     private final DailyMarketSummaryService dailyMarketSummaryService;
+    private final ValueConversionService valueConversionService;
+    private final UsdtRateService usdtRateService;
+    private final IdeaChartService ideaChartService;
 
     public TelegramCommandService(
             TelegramMessageService telegramMessageService,
@@ -30,7 +33,10 @@ public class TelegramCommandService {
             AlertService alertService,
             TrendingCryptoService trendingCryptoService,
             PortfolioService portfolioService,
-            DailyMarketSummaryService dailyMarketSummaryService
+            DailyMarketSummaryService dailyMarketSummaryService,
+            ValueConversionService valueConversionService,
+            UsdtRateService usdtRateService,
+            IdeaChartService ideaChartService
     ) {
         this.telegramMessageService = telegramMessageService;
         this.cryptoPriceService = cryptoPriceService;
@@ -40,6 +46,9 @@ public class TelegramCommandService {
         this.trendingCryptoService = trendingCryptoService;
         this.portfolioService = portfolioService;
         this.dailyMarketSummaryService = dailyMarketSummaryService;
+        this.valueConversionService = valueConversionService;
+        this.usdtRateService = usdtRateService;
+        this.ideaChartService = ideaChartService;
     }
 
     public void handleTextMessage(Long chatId, String text) {
@@ -51,6 +60,219 @@ public class TelegramCommandService {
 
         if ("/start".equalsIgnoreCase(commandText) || "/help".equalsIgnoreCase(commandText)) {
             telegramMessageService.sendTextMessage(chatId, getMainHelpMessage());
+            return;
+        }
+
+        if (isCommand(commandText, "/idea")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao idea chart, doi minh mot chut...");
+                var ideaChart = ideaChartService.createIdeaChart(arguments);
+                telegramMessageService.sendPhotoFile(
+                        chatId,
+                        ideaChart.imagePath(),
+                        ideaChart.caption(),
+                        buildIdeaChartKeyboard(ideaChart.symbol(), ideaChart.interval(), "IDEA")
+                );
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create idea chart for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc idea chart.
+
+                        Ban kiem tra Node/Playwright hoac thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/chart_volume")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getVolumeDeltaHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao volume delta chart, doi minh mot chut...");
+                var chart = ideaChartService.createVolumeDeltaChart(arguments);
+                telegramMessageService.sendPhotoFile(
+                        chatId,
+                        chart.imagePath(),
+                        chart.caption(),
+                        buildIdeaChartKeyboard(chart.symbol(), chart.interval(), "VOLUME")
+                );
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getVolumeDeltaHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create volume delta chart for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc volume delta chart.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/chart_breakout")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getBreakoutHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao breakout confirmation chart, doi minh mot chut...");
+                var chart = ideaChartService.createBreakoutChart(arguments);
+                telegramMessageService.sendPhotoFile(
+                        chatId,
+                        chart.imagePath(),
+                        chart.caption(),
+                        buildIdeaChartKeyboard(chart.symbol(), chart.interval(), "BREAKOUT")
+                );
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getBreakoutHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create breakout chart for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc breakout chart.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/chart_trendline")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getTrendlineHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao trendline chart, doi minh mot chut...");
+                var chart = ideaChartService.createTrendlineChart(arguments);
+                telegramMessageService.sendPhotoFile(
+                        chatId,
+                        chart.imagePath(),
+                        chart.caption(),
+                        buildIdeaChartKeyboard(chart.symbol(), chart.interval(), "TRENDLINE")
+                );
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getTrendlineHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create trendline chart for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc trendline chart.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/chart_orderflow")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getOrderFlowHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao order flow chart, doi minh mot chut...");
+                var chart = ideaChartService.createOrderFlowChart(arguments);
+                telegramMessageService.sendPhotoFile(
+                        chatId,
+                        chart.imagePath(),
+                        chart.caption(),
+                        buildIdeaChartKeyboard(chart.symbol(), chart.interval(), "ORDER_FLOW")
+                );
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, ideaChartService.getOrderFlowHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create order flow chart for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc order flow chart.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/usdt")) {
+            try {
+                telegramMessageService.sendTextMessage(chatId, usdtRateService.getUsdtMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to get USDT/VND rate", exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong lay duoc gia USDT/VND.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/val")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, valueConversionService.getHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, valueConversionService.getValueMessage(arguments));
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, valueConversionService.getHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to calculate value for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tinh duoc value.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/notif")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, """
+                        Cach dung:
+                        /notif BTC 100000
+
+                        Bot se nhac khi coin cham muc gia nay.
+                        """);
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, alertService.createNotification(chatId, arguments));
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, """
+                        Cach dung:
+                        /notif BTC 100000
+
+                        Bot se nhac khi coin cham muc gia nay.
+                        """);
+            } catch (Exception exception) {
+                log.warn("Failed to create notification for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc notification.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
             return;
         }
 
@@ -259,6 +481,14 @@ public class TelegramCommandService {
                 /start
                 /help
                 /crypto BTC
+                /idea BTC
+                /chart_volume BTC
+                /chart_breakout BTC
+                /chart_trendline BTC
+                /chart_orderflow BTC
+                /val 1 BTC
+                /notif BTC 100000
+                /usdt
                 /trending
                 /daily_on
                 /daily_off
@@ -282,6 +512,14 @@ public class TelegramCommandService {
                 /start - xem huong dan
                 /help - xem lai danh sach lenh
                 /crypto BTC - xem gia crypto
+                /idea BTC - tao chart idea bang Lightweight Charts
+                /chart_volume BTC - xem chart Volume Delta
+                /chart_breakout BTC - xem chart Breakout Confirmation
+                /chart_trendline BTC - xem chart Trendline theo pivot
+                /chart_orderflow BTC - xem chart Order Flow
+                /val 1 BTC - tinh value theo USDT va VND
+                /notif BTC 100000 - nhac khi coin cham gia
+                /usdt - xem gia USDT/USD theo VND P2P
                 /trending - top 10 crypto dang trending
                 /daily_on - bat Daily Market Summary moi sang
                 /daily_off - tat Daily Market Summary
@@ -314,6 +552,7 @@ public class TelegramCommandService {
         try {
             switch (parts[0]) {
                 case "CHART" -> handleChartCallback(chatId, parts);
+                case "IDEA_CHART" -> handleIdeaChartCallback(chatId, parts);
                 case "WATCH" -> handleWatchCallback(chatId, parts);
                 case "ALERT_PROMPT" -> handleAlertPromptCallback(chatId, parts);
                 default -> telegramMessageService.sendTextMessage(chatId, "Nut nay khong con duoc ho tro.");
@@ -334,6 +573,31 @@ public class TelegramCommandService {
 
         var chartImage = cryptoChartService.getChartImage(parts[1], parts[2]);
         telegramMessageService.sendPhoto(chatId, chartImage.imageUrl(), chartImage.caption());
+    }
+
+    private void handleIdeaChartCallback(Long chatId, String[] parts) {
+        if (parts.length != 4) {
+            telegramMessageService.sendTextMessage(chatId, ideaChartService.getHelpMessage());
+            return;
+        }
+
+        String type = parts[1];
+        String arguments = parts[2] + " " + parts[3];
+        var chart = switch (type) {
+            case "IDEA" -> ideaChartService.createIdeaChart(arguments);
+            case "VOLUME" -> ideaChartService.createVolumeDeltaChart(arguments);
+            case "BREAKOUT" -> ideaChartService.createBreakoutChart(arguments);
+            case "TRENDLINE" -> ideaChartService.createTrendlineChart(arguments);
+            case "ORDER_FLOW" -> ideaChartService.createOrderFlowChart(arguments);
+            default -> throw new IllegalArgumentException("Unsupported idea chart callback: " + type);
+        };
+
+        telegramMessageService.sendPhotoFile(
+                chatId,
+                chart.imagePath(),
+                chart.caption(),
+                buildIdeaChartKeyboard(chart.symbol(), chart.interval(), type)
+        );
     }
 
     private void handleWatchCallback(Long chatId, String[] parts) {
@@ -369,6 +633,37 @@ public class TelegramCommandService {
                 List.of(
                         new InlineKeyboardButton("Add Watchlist", "WATCH:" + symbol),
                         new InlineKeyboardButton("Create Alert", "ALERT_PROMPT:" + symbol)
+                )
+        ));
+    }
+
+    private InlineKeyboardMarkup buildIdeaChartKeyboard(String symbol, String interval, String currentType) {
+        return new InlineKeyboardMarkup(List.of(
+                List.of(
+                        new InlineKeyboardButton(
+                                currentType.equals("IDEA") ? "Idea Chart" : "Idea",
+                                "IDEA_CHART:IDEA:" + symbol + ":" + interval
+                        ),
+                        new InlineKeyboardButton(
+                                currentType.equals("VOLUME") ? "Volume Delta" : "Volume",
+                                "IDEA_CHART:VOLUME:" + symbol + ":" + interval
+                        )
+                ),
+                List.of(
+                        new InlineKeyboardButton(
+                                currentType.equals("BREAKOUT") ? "Breakout Chart" : "Breakout",
+                                "IDEA_CHART:BREAKOUT:" + symbol + ":" + interval
+                        ),
+                        new InlineKeyboardButton(
+                                currentType.equals("TRENDLINE") ? "Trendline Chart" : "Trendline",
+                                "IDEA_CHART:TRENDLINE:" + symbol + ":" + interval
+                        )
+                ),
+                List.of(
+                        new InlineKeyboardButton(
+                                currentType.equals("ORDER_FLOW") ? "Order Flow Chart" : "Order Flow",
+                                "IDEA_CHART:ORDER_FLOW:" + symbol + ":" + interval
+                        )
                 )
         ));
     }

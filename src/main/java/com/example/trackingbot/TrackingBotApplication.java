@@ -6,12 +6,16 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import com.example.trackingbot.config.IdeaChartProperties;
 import com.example.trackingbot.config.TelegramBotProperties;
 
 @SpringBootApplication
 @EnableCaching
 @EnableScheduling
-@EnableConfigurationProperties(TelegramBotProperties.class)
+@EnableConfigurationProperties({
+        TelegramBotProperties.class,
+        IdeaChartProperties.class
+})
 public class TrackingBotApplication {
 
     public static void main(String[] args) {

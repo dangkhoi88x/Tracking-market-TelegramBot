@@ -26,27 +26,20 @@ public class CoinGeckoClient {
     }
 
     public CryptoPrice getSimplePrice(String coinId, String symbol) {
-        CoinGeckoSimplePriceResponse response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/simple/price")
-                        .queryParam("ids", coinId)
-                        .queryParam("vs_currencies", "usd")
-                        .queryParam("include_24hr_change", true)
-                        .queryParam("include_last_updated_at", true)
-                        .build())
-                .retrieve()
-                .body(CoinGeckoSimplePriceResponse.class);
-
-        if (response == null || !response.containsKey(coinId)) {
-            throw new IllegalStateException("CoinGecko did not return price for " + coinId);
+        List<CoinGeckoMarketData> marketData = getMarketData(List.of(coinId));
+        if (marketData.isEmpty()) {
+            throw new IllegalStateException("CoinGecko did not return market data for " + coinId);
         }
 
-        CoinGeckoPriceData priceData = response.get(coinId);
+        CoinGeckoMarketData priceData = marketData.get(0);
         return new CryptoPrice(
                 symbol,
-                priceData.usd(),
-                priceData.usd24hChange(),
-                Instant.ofEpochSecond(priceData.lastUpdatedAt())
+                priceData.currentPrice(),
+                priceData.priceChangePercentage24h(),
+                priceData.totalVolume(),
+                priceData.high24h(),
+                priceData.low24h(),
+                Instant.now()
         );
     }
 
@@ -211,6 +204,8 @@ public class CoinGeckoClient {
             String name,
             @JsonProperty("current_price") BigDecimal currentPrice,
             @JsonProperty("price_change_percentage_24h") BigDecimal priceChangePercentage24h,
+            @JsonProperty("high_24h") BigDecimal high24h,
+            @JsonProperty("low_24h") BigDecimal low24h,
             @JsonProperty("total_volume") BigDecimal totalVolume
     ) {
     }

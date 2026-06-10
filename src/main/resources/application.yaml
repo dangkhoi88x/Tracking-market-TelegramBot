@@ -14,3 +14,9 @@ telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN}
     webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+
+idea-chart:
+  node-bin: ${IDEA_CHART_NODE_BIN:node}
+  node-path: ${IDEA_CHART_NODE_PATH:}
+  renderer-script: ${IDEA_CHART_RENDERER_SCRIPT:scripts/render-idea-chart.js}
+  output-dir: ${IDEA_CHART_OUTPUT_DIR:${java.io.tmpdir}/trackingbot-idea-charts}
