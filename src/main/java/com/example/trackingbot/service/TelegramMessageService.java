@@ -1,7 +1,10 @@
 package com.example.trackingbot.service;
 
 import com.example.trackingbot.config.TelegramBotProperties;
+import com.example.trackingbot.dto.AnswerCallbackQueryRequest;
+import com.example.trackingbot.dto.InlineKeyboardMarkup;
 import com.example.trackingbot.dto.SendMessageRequest;
+import com.example.trackingbot.dto.SendMessageWithKeyboardRequest;
 import com.example.trackingbot.dto.SendPhotoRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -27,10 +30,26 @@ public class TelegramMessageService {
                 .toBodilessEntity();
     }
 
+    public void sendTextMessage(Long chatId, String text, InlineKeyboardMarkup replyMarkup) {
+        restClient.post()
+                .uri("/sendMessage")
+                .body(new SendMessageWithKeyboardRequest(chatId, text, replyMarkup))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public void sendPhoto(Long chatId, String photoUrl, String caption) {
         restClient.post()
                 .uri("/sendPhoto")
                 .body(new SendPhotoRequest(chatId, photoUrl, caption))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void answerCallbackQuery(String callbackQueryId, String text) {
+        restClient.post()
+                .uri("/answerCallbackQuery")
+                .body(new AnswerCallbackQueryRequest(callbackQueryId, text))
                 .retrieve()
                 .toBodilessEntity();
     }

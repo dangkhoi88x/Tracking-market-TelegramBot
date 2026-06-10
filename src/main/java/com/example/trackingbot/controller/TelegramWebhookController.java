@@ -35,14 +35,21 @@ public class TelegramWebhookController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (update.message() == null || update.message().chat() == null) {
+        if (update.callbackQuery() != null && update.callbackQuery().message() != null) {
+            telegramCommandService.handleCallbackQuery(
+                    update.callbackQuery().id(),
+                    update.callbackQuery().message().chat().id(),
+                    update.callbackQuery().data()
+            );
             return ResponseEntity.ok().build();
         }
 
-        telegramCommandService.handleTextMessage(
-                update.message().chat().id(),
-                update.message().text()
-        );
+        if (update.message() != null && update.message().chat() != null) {
+            telegramCommandService.handleTextMessage(
+                    update.message().chat().id(),
+                    update.message().text()
+            );
+        }
 
         return ResponseEntity.ok().build();
     }
