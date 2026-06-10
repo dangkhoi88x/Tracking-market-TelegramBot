@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: TrackingBot
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
