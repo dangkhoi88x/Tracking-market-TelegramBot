@@ -44,6 +44,7 @@ public class TechnicalAnalysisService {
         BigDecimal priorSupport = findSupport(recentKlines(previousKlines, RECENT_LEVEL_WINDOW));
         BigDecimal priorResistance = findResistance(recentKlines(previousKlines, RECENT_LEVEL_WINDOW));
         BigDecimal averageVolume20 = calculateAverageVolume(previousKlines, AVERAGE_VOLUME_WINDOW);
+        BigDecimal rsi14 = calculateRsi(klines, 14);
         String bias = detectBias(lastClose, lastValue(ema20), lastValue(ema50));
         BreakoutSignal breakoutSignal = detectBreakout(klines, priorSupport, priorResistance, averageVolume20);
         TrendlineAnalysis trendlineAnalysis = analyzeTrendlines(klines);
@@ -62,6 +63,7 @@ public class TechnicalAnalysisService {
                 priorSupport,
                 priorResistance,
                 averageVolume20,
+                rsi14,
                 lastKline(klines).takerBuyVolume(),
                 lastKline(klines).takerSellVolume(),
                 lastKline(klines).volumeDelta(),
@@ -234,6 +236,49 @@ public class TechnicalAnalysisService {
         }
 
         return values;
+    }
+
+    private BigDecimal calculateRsi(List<BinanceKline> klines, int period) {
+        if (klines.size() <= period) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal averageGain = BigDecimal.ZERO;
+        BigDecimal averageLoss = BigDecimal.ZERO;
+
+        for (int index = 1; index <= period; index++) {
+            BigDecimal change = klines.get(index).close().subtract(klines.get(index - 1).close());
+            if (change.compareTo(BigDecimal.ZERO) >= 0) {
+                averageGain = averageGain.add(change);
+            } else {
+                averageLoss = averageLoss.add(change.abs());
+            }
+        }
+
+        averageGain = averageGain.divide(BigDecimal.valueOf(period), 12, RoundingMode.HALF_UP);
+        averageLoss = averageLoss.divide(BigDecimal.valueOf(period), 12, RoundingMode.HALF_UP);
+
+        for (int index = period + 1; index < klines.size(); index++) {
+            BigDecimal change = klines.get(index).close().subtract(klines.get(index - 1).close());
+            BigDecimal gain = change.compareTo(BigDecimal.ZERO) > 0 ? change : BigDecimal.ZERO;
+            BigDecimal loss = change.compareTo(BigDecimal.ZERO) < 0 ? change.abs() : BigDecimal.ZERO;
+            averageGain = averageGain.multiply(BigDecimal.valueOf(period - 1L))
+                    .add(gain)
+                    .divide(BigDecimal.valueOf(period), 12, RoundingMode.HALF_UP);
+            averageLoss = averageLoss.multiply(BigDecimal.valueOf(period - 1L))
+                    .add(loss)
+                    .divide(BigDecimal.valueOf(period), 12, RoundingMode.HALF_UP);
+        }
+
+        if (averageLoss.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.valueOf(100);
+        }
+
+        BigDecimal relativeStrength = averageGain.divide(averageLoss, 12, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(100)
+                .subtract(BigDecimal.valueOf(100)
+                        .divide(BigDecimal.ONE.add(relativeStrength), 6, RoundingMode.HALF_UP))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private List<BigDecimal> calculateCumulativeVolumeDelta(List<BinanceKline> klines) {

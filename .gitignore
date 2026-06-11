@@ -1,4 +1,7 @@
 HELP.md
+.env
+.env.*
+!.env.example
 target/
 node_modules/
 .mvn/wrapper/maven-wrapper.jar

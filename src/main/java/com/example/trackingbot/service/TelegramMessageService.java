@@ -20,6 +20,8 @@ import java.nio.file.Path;
 @Service
 public class TelegramMessageService {
 
+    private static final int TELEGRAM_TEXT_LIMIT = 3900;
+
     private final RestClient restClient;
     private final TelegramBotProperties properties;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -32,6 +34,17 @@ public class TelegramMessageService {
     }
 
     public void sendTextMessage(Long chatId, String text) {
+        if (text != null && text.length() > TELEGRAM_TEXT_LIMIT) {
+            for (String chunk : splitMessage(text)) {
+                sendSingleTextMessage(chatId, chunk);
+            }
+            return;
+        }
+
+        sendSingleTextMessage(chatId, text);
+    }
+
+    private void sendSingleTextMessage(Long chatId, String text) {
         restClient.post()
                 .uri("/sendMessage")
                 .body(new SendMessageRequest(chatId, text))
@@ -99,5 +112,28 @@ public class TelegramMessageService {
         }
 
         return configuredSecret.equals(secretHeader);
+    }
+
+    private java.util.List<String> splitMessage(String text) {
+        java.util.ArrayList<String> chunks = new java.util.ArrayList<>();
+        String remaining = text;
+        while (remaining.length() > TELEGRAM_TEXT_LIMIT) {
+            int splitIndex = remaining.lastIndexOf("\n\n", TELEGRAM_TEXT_LIMIT);
+            if (splitIndex < TELEGRAM_TEXT_LIMIT / 2) {
+                splitIndex = remaining.lastIndexOf("\n", TELEGRAM_TEXT_LIMIT);
+            }
+            if (splitIndex < TELEGRAM_TEXT_LIMIT / 2) {
+                splitIndex = TELEGRAM_TEXT_LIMIT;
+            }
+
+            chunks.add(remaining.substring(0, splitIndex).trim());
+            remaining = remaining.substring(splitIndex).trim();
+        }
+
+        if (!remaining.isBlank()) {
+            chunks.add(remaining);
+        }
+
+        return chunks;
     }
 }

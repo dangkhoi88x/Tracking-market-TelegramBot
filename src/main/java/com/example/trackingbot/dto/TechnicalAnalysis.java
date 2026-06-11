@@ -17,6 +17,7 @@ public record TechnicalAnalysis(
         BigDecimal priorSupport,
         BigDecimal priorResistance,
         BigDecimal averageVolume20,
+        BigDecimal rsi14,
         BigDecimal lastBuyVolume,
         BigDecimal lastSellVolume,
         BigDecimal lastVolumeDelta,

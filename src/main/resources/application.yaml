@@ -20,3 +20,9 @@ idea-chart:
   node-path: ${IDEA_CHART_NODE_PATH:}
   renderer-script: ${IDEA_CHART_RENDERER_SCRIPT:scripts/render-idea-chart.js}
   output-dir: ${IDEA_CHART_OUTPUT_DIR:${java.io.tmpdir}/trackingbot-idea-charts}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+  model: ${OPENAI_MODEL:gpt-5-mini}
+  max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:2200}

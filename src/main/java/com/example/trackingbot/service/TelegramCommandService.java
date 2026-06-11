@@ -24,6 +24,7 @@ public class TelegramCommandService {
     private final ValueConversionService valueConversionService;
     private final UsdtRateService usdtRateService;
     private final IdeaChartService ideaChartService;
+    private final AiPredictionService aiPredictionService;
 
     public TelegramCommandService(
             TelegramMessageService telegramMessageService,
@@ -36,7 +37,8 @@ public class TelegramCommandService {
             DailyMarketSummaryService dailyMarketSummaryService,
             ValueConversionService valueConversionService,
             UsdtRateService usdtRateService,
-            IdeaChartService ideaChartService
+            IdeaChartService ideaChartService,
+            AiPredictionService aiPredictionService
     ) {
         this.telegramMessageService = telegramMessageService;
         this.cryptoPriceService = cryptoPriceService;
@@ -49,6 +51,7 @@ public class TelegramCommandService {
         this.valueConversionService = valueConversionService;
         this.usdtRateService = usdtRateService;
         this.ideaChartService = ideaChartService;
+        this.aiPredictionService = aiPredictionService;
     }
 
     public void handleTextMessage(Long chatId, String text) {
@@ -201,6 +204,39 @@ public class TelegramCommandService {
                 log.warn("Failed to create order flow chart for arguments {}", arguments, exception);
                 telegramMessageService.sendTextMessage(chatId, """
                         Tam thoi khong tao duoc order flow chart.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/ai")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, aiPredictionService.getHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, "Dang tao AI quant analysis bang GPT-5 mini, doi minh mot chut...");
+                telegramMessageService.sendTextMessage(chatId, aiPredictionService.getAiPredictionMessage(arguments));
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, aiPredictionService.getHelpMessage());
+            } catch (IllegalStateException exception) {
+                log.warn("Failed to create AI prediction for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Chua cau hinh OpenAI API key hoac AI response khong hop le.
+
+                        Ban can them env:
+                        OPENAI_API_KEY=your_api_key
+
+                        Sau do restart Spring Boot va thu lai /ai BTC.
+                        """);
+            } catch (Exception exception) {
+                log.warn("Failed to create AI prediction for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc AI analysis.
 
                         Ban thu lai sau nhe.
                         """);
@@ -486,6 +522,7 @@ public class TelegramCommandService {
                 /chart_breakout BTC
                 /chart_trendline BTC
                 /chart_orderflow BTC
+                /ai BTC
                 /val 1 BTC
                 /notif BTC 100000
                 /usdt
@@ -517,6 +554,7 @@ public class TelegramCommandService {
                 /chart_breakout BTC - xem chart Breakout Confirmation
                 /chart_trendline BTC - xem chart Trendline theo pivot
                 /chart_orderflow BTC - xem chart Order Flow
+                /ai BTC - AI quant market analysis bang GPT-5 mini
                 /val 1 BTC - tinh value theo USDT va VND
                 /notif BTC 100000 - nhac khi coin cham gia
                 /usdt - xem gia USDT/USD theo VND P2P
@@ -553,6 +591,7 @@ public class TelegramCommandService {
             switch (parts[0]) {
                 case "CHART" -> handleChartCallback(chatId, parts);
                 case "IDEA_CHART" -> handleIdeaChartCallback(chatId, parts);
+                case "AI_PREDICTION" -> handleAiPredictionCallback(chatId, parts);
                 case "WATCH" -> handleWatchCallback(chatId, parts);
                 case "ALERT_PROMPT" -> handleAlertPromptCallback(chatId, parts);
                 default -> telegramMessageService.sendTextMessage(chatId, "Nut nay khong con duoc ho tro.");
@@ -598,6 +637,17 @@ public class TelegramCommandService {
                 chart.caption(),
                 buildIdeaChartKeyboard(chart.symbol(), chart.interval(), type)
         );
+    }
+
+    private void handleAiPredictionCallback(Long chatId, String[] parts) {
+        if (parts.length != 3) {
+            telegramMessageService.sendTextMessage(chatId, aiPredictionService.getHelpMessage());
+            return;
+        }
+
+        String arguments = parts[1] + " " + parts[2];
+        telegramMessageService.sendTextMessage(chatId, "Dang tao AI quant analysis bang GPT-5 mini, doi minh mot chut...");
+        telegramMessageService.sendTextMessage(chatId, aiPredictionService.getAiPredictionMessage(arguments));
     }
 
     private void handleWatchCallback(Long chatId, String[] parts) {
@@ -663,6 +713,10 @@ public class TelegramCommandService {
                         new InlineKeyboardButton(
                                 currentType.equals("ORDER_FLOW") ? "Order Flow Chart" : "Order Flow",
                                 "IDEA_CHART:ORDER_FLOW:" + symbol + ":" + interval
+                        ),
+                        new InlineKeyboardButton(
+                                "AI",
+                                "AI_PREDICTION:" + symbol + ":" + interval
                         )
                 )
         ));
