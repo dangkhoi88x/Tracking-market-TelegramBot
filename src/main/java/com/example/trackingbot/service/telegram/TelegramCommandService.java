@@ -42,6 +42,7 @@ public class TelegramCommandService {
     private final AiPredictionService aiPredictionService;
     private final SignalScoreService signalScoreService;
     private final AdminObservabilityService adminObservabilityService;
+    private final UserCommandRateLimiter userCommandRateLimiter;
 
     public void handleTextMessage(Long chatId, String text) {
         if (text == null || text.isBlank()) {
@@ -52,6 +53,12 @@ public class TelegramCommandService {
 
         if ("/start".equalsIgnoreCase(commandText) || "/help".equalsIgnoreCase(commandText)) {
             telegramMessageService.sendTextMessage(chatId, getMainHelpMessage());
+            return;
+        }
+
+        var rateLimitResult = userCommandRateLimiter.checkAllowed(chatId, commandText);
+        if (!rateLimitResult.allowed()) {
+            telegramMessageService.sendTextMessage(chatId, buildRateLimitMessage(rateLimitResult));
             return;
         }
 
@@ -826,5 +833,18 @@ public class TelegramCommandService {
         }
 
         return parts[1];
+    }
+
+    private String buildRateLimitMessage(UserCommandRateLimiter.RateLimitResult result) {
+        return """
+                Ban dang gui lenh qua nhanh.
+
+                Gioi han: %s toi da %d lan/phut.
+                Thu lai sau khoang %d giay.
+                """.formatted(
+                result.ruleName(),
+                result.maxRequests(),
+                result.retryAfterSeconds()
+        );
     }
 }
