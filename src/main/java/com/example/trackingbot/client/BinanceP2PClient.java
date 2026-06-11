@@ -1,6 +1,6 @@
 package com.example.trackingbot.client;
 
-import com.example.trackingbot.dto.UsdtVndRate;
+import com.example.trackingbot.dto.response.UsdtVndRate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

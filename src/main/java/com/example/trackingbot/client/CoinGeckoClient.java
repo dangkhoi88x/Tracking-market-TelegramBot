@@ -1,9 +1,9 @@
 package com.example.trackingbot.client;
 
-import com.example.trackingbot.dto.CryptoPrice;
-import com.example.trackingbot.dto.CryptoChartPoint;
-import com.example.trackingbot.dto.MarketCrypto;
-import com.example.trackingbot.dto.TrendingCrypto;
+import com.example.trackingbot.dto.response.CryptoPrice;
+import com.example.trackingbot.dto.response.CryptoChartPoint;
+import com.example.trackingbot.dto.response.MarketCrypto;
+import com.example.trackingbot.dto.response.TrendingCrypto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

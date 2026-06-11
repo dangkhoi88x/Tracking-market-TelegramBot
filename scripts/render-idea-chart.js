@@ -367,6 +367,74 @@ function buildHtml(data) {
       \`;
     }
 
+    function yForPrice(price) {
+      const y = candleSeries.priceToCoordinate(Number(price));
+      return y === null ? null : y;
+    }
+
+    function horizontalLine(price, color, label, dash = false) {
+      const y = yForPrice(price);
+      if (y === null) return "";
+      return \`
+        <line x1="76" y1="\${y}" x2="1166" y2="\${y}" stroke="\${color}" stroke-width="3" stroke-linecap="round" stroke-dasharray="\${dash ? "10 8" : "0"}" opacity="0.88"></line>
+        <rect x="1000" y="\${y - 15}" width="166" height="30" rx="6" fill="\${color}" opacity="0.92"></rect>
+        <text x="1010" y="\${y + 6}" fill="#ffffff" font-size="15" font-weight="800">\${label} \${formatNumber(price)}</text>
+      \`;
+    }
+
+    function drawZone(low, high, color, label) {
+      const yHigh = yForPrice(high);
+      const yLow = yForPrice(low);
+      if (yHigh === null || yLow === null) return "";
+      const top = Math.min(yHigh, yLow);
+      const height = Math.max(18, Math.abs(yLow - yHigh));
+      return \`
+        <rect x="80" y="\${top}" width="1080" height="\${height}" fill="\${color}" stroke="\${color}" stroke-width="2" opacity="0.20" rx="8"></rect>
+        <text x="96" y="\${top + 22}" fill="#e5e7eb" font-size="17" font-weight="900">\${label}</text>
+      \`;
+    }
+
+    function drawAiAnalysisOverlay(svg) {
+      const annotations = data.aiAnalysis?.chartAnnotations || {};
+      const bias = annotations.bias || data.aiAnalysis?.bias || "Neutral";
+      const confidence = annotations.confidence || data.aiAnalysis?.confidence || 0;
+      const accent = bias === "Bullish" ? "#22c55e" : bias === "Bearish" ? "#ef4444" : "#f59e0b";
+      const yRangeHigh = yForPrice(annotations.rangeHigh);
+      const yRangeLow = yForPrice(annotations.rangeLow);
+      const rangeTop = yRangeHigh === null || yRangeLow === null ? 110 : Math.min(yRangeHigh, yRangeLow);
+      const rangeHeight = yRangeHigh === null || yRangeLow === null ? 240 : Math.max(30, Math.abs(yRangeLow - yRangeHigh));
+      const bullishY = yForPrice(annotations.bullishTrigger);
+      const bearishY = yForPrice(annotations.bearishTrigger);
+
+      svg.innerHTML = \`
+        <defs>
+          <marker id="aiArrowUp" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+            <path d="M 0 0 L 12 6 L 0 12 z" fill="#22c55e"></path>
+          </marker>
+          <marker id="aiArrowDown" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+            <path d="M 0 0 L 12 6 L 0 12 z" fill="#ef4444"></path>
+          </marker>
+        </defs>
+        <rect x="76" y="\${rangeTop}" width="1090" height="\${rangeHeight}" fill="rgba(245,158,11,0.09)" stroke="rgba(245,158,11,0.70)" stroke-width="2" stroke-dasharray="10 8" rx="10"></rect>
+        <text x="92" y="\${rangeTop + 24}" fill="#fbbf24" font-size="18" font-weight="900">AI range: \${formatNumber(annotations.rangeLow)} - \${formatNumber(annotations.rangeHigh)}</text>
+        \${drawZone(annotations.resistanceZoneLow, annotations.resistanceZoneHigh, "#f43f5e", "Resistance zone")}
+        \${drawZone(annotations.supportZoneLow, annotations.supportZoneHigh, "#22c55e", "Support zone")}
+        \${horizontalLine(annotations.bullishTrigger, "#22c55e", "Bull trigger")}
+        \${horizontalLine(annotations.bearishTrigger, "#ef4444", "Bear trigger")}
+        \${horizontalLine(annotations.invalidationBullish, "#a855f7", "Invalidation", true)}
+        \${bullishY === null ? "" : \`<line x1="810" y1="\${bullishY + 82}" x2="1080" y2="\${bullishY - 12}" stroke="#22c55e" stroke-width="9" stroke-linecap="round" marker-end="url(#aiArrowUp)" opacity="0.78"></line>\`}
+        \${bearishY === null ? "" : \`<line x1="810" y1="\${bearishY - 82}" x2="1080" y2="\${bearishY + 12}" stroke="#ef4444" stroke-width="9" stroke-linecap="round" marker-end="url(#aiArrowDown)" opacity="0.72"></line>\`}
+        \${drawTextPanel(svg, 32, 78, [
+          "AI Quant Map",
+          \`Bias: \${bias} · \${confidence}%\`,
+          \`Risk: \${data.aiAnalysis?.riskLevel || "n/a"}\`,
+          \`Regime: \${data.aiAnalysis?.marketRegime || "n/a"}\`,
+          \`Bid dominance: \${percent(data.orderFlow?.bidDominance || 0)}\`,
+          \`Trades: \${data.orderFlow?.tradePressure || "n/a"}\`,
+        ], accent, 520)}
+      \`;
+    }
+
     function drawIdeaOverlay(svg, candleSeries) {
       const supportY = candleSeries.priceToCoordinate(Number(data.idea.support));
       const resistanceY = candleSeries.priceToCoordinate(Number(data.idea.resistance));
@@ -410,6 +478,11 @@ function buildHtml(data) {
 
       if (data.chartType === "ORDER_FLOW") {
         drawOrderFlowOverlay(svg);
+        return;
+      }
+
+      if (data.chartType === "AI_ANALYSIS") {
+        drawAiAnalysisOverlay(svg);
         return;
       }
 

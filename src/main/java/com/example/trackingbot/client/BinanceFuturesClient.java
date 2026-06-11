@@ -1,8 +1,8 @@
 package com.example.trackingbot.client;
 
-import com.example.trackingbot.dto.BinanceKline;
-import com.example.trackingbot.dto.AggTrade;
-import com.example.trackingbot.dto.OrderBookLevel;
+import com.example.trackingbot.dto.response.BinanceKline;
+import com.example.trackingbot.dto.response.AggTrade;
+import com.example.trackingbot.dto.response.OrderBookLevel;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

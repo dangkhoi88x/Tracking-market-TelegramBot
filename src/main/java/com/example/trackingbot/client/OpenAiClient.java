@@ -1,7 +1,7 @@
 package com.example.trackingbot.client;
 
 import com.example.trackingbot.config.OpenAiProperties;
-import com.example.trackingbot.dto.AiPredictionResponse;
+import com.example.trackingbot.dto.response.AiPredictionResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -96,6 +96,8 @@ public class OpenAiClient {
                     - Explain context from trend, momentum, volume delta, breakout, trendline, and order flow.
                     - Give both bullish and bearish scenarios.
                     - Include invalidation, key levels, and risk management.
+                    - Create chartAnnotations using only levels from MARKET_DATA.
+                    - chartAnnotations are used by a renderer, so all numeric levels must be valid numbers.
                     - Keep each field concise enough for Telegram but still professional.
 
                     MARKET_DATA:
@@ -130,7 +132,8 @@ public class OpenAiClient {
                         "invalidation",
                         "keyLevels",
                         "riskManagement",
-                        "watchlistTriggers"
+                        "watchlistTriggers",
+                        "chartAnnotations"
                 ),
                 "properties", Map.ofEntries(
                         Map.entry("bias", Map.of(
@@ -154,7 +157,55 @@ public class OpenAiClient {
                         Map.entry("invalidation", stringField),
                         Map.entry("keyLevels", stringField),
                         Map.entry("riskManagement", stringField),
-                        Map.entry("watchlistTriggers", stringListField)
+                        Map.entry("watchlistTriggers", stringListField),
+                        Map.entry("chartAnnotations", buildChartAnnotationsSchema())
+                )
+        );
+    }
+
+    private Map<String, Object> buildChartAnnotationsSchema() {
+        Map<String, Object> numberField = Map.of("type", "number");
+        return Map.of(
+                "type", "object",
+                "additionalProperties", false,
+                "required", List.of(
+                        "rangeLow",
+                        "rangeHigh",
+                        "currentPrice",
+                        "ema20",
+                        "ema50",
+                        "bullishTrigger",
+                        "bearishTrigger",
+                        "invalidationBullish",
+                        "resistanceZoneLow",
+                        "resistanceZoneHigh",
+                        "supportZoneLow",
+                        "supportZoneHigh",
+                        "bias",
+                        "confidence"
+                ),
+                "properties", Map.ofEntries(
+                        Map.entry("rangeLow", numberField),
+                        Map.entry("rangeHigh", numberField),
+                        Map.entry("currentPrice", numberField),
+                        Map.entry("ema20", numberField),
+                        Map.entry("ema50", numberField),
+                        Map.entry("bullishTrigger", numberField),
+                        Map.entry("bearishTrigger", numberField),
+                        Map.entry("invalidationBullish", numberField),
+                        Map.entry("resistanceZoneLow", numberField),
+                        Map.entry("resistanceZoneHigh", numberField),
+                        Map.entry("supportZoneLow", numberField),
+                        Map.entry("supportZoneHigh", numberField),
+                        Map.entry("bias", Map.of(
+                                "type", "string",
+                                "enum", List.of("Bullish", "Bearish", "Neutral")
+                        )),
+                        Map.entry("confidence", Map.of(
+                                "type", "integer",
+                                "minimum", 0,
+                                "maximum", 100
+                        ))
                 )
         );
     }

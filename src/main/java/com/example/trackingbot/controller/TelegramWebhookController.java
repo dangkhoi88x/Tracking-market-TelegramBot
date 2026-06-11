@@ -1,8 +1,8 @@
 package com.example.trackingbot.controller;
 
-import com.example.trackingbot.dto.TelegramUpdate;
-import com.example.trackingbot.service.TelegramCommandService;
-import com.example.trackingbot.service.TelegramMessageService;
+import com.example.trackingbot.dto.response.TelegramUpdate;
+import com.example.trackingbot.service.telegram.TelegramCommandService;
+import com.example.trackingbot.service.telegram.TelegramMessageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
