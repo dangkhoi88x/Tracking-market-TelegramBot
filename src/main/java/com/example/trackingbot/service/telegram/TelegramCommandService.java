@@ -2,8 +2,10 @@ package com.example.trackingbot.service.telegram;
 
 import com.example.trackingbot.dto.request.InlineKeyboardButton;
 import com.example.trackingbot.dto.request.InlineKeyboardMarkup;
+import com.example.trackingbot.service.admin.AdminObservabilityService;
 import com.example.trackingbot.service.alert.AlertService;
 import com.example.trackingbot.service.analysis.AiPredictionService;
+import com.example.trackingbot.service.analysis.SignalScoreService;
 import com.example.trackingbot.service.chart.IdeaChartService;
 import com.example.trackingbot.service.crypto.CryptoChartService;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
@@ -38,6 +40,8 @@ public class TelegramCommandService {
     private final UsdtRateService usdtRateService;
     private final IdeaChartService ideaChartService;
     private final AiPredictionService aiPredictionService;
+    private final SignalScoreService signalScoreService;
+    private final AdminObservabilityService adminObservabilityService;
 
     public void handleTextMessage(Long chatId, String text) {
         if (text == null || text.isBlank()) {
@@ -265,6 +269,38 @@ public class TelegramCommandService {
                         Ban thu lai sau nhe.
                         """);
             }
+            return;
+        }
+
+        if (isCommand(commandText, "/signal")) {
+            String arguments = extractCommandArgument(commandText);
+            if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
+                telegramMessageService.sendTextMessage(chatId, signalScoreService.getHelpMessage());
+                return;
+            }
+
+            try {
+                telegramMessageService.sendTextMessage(chatId, signalScoreService.getSignalMessage(arguments));
+            } catch (IllegalArgumentException exception) {
+                telegramMessageService.sendTextMessage(chatId, signalScoreService.getHelpMessage());
+            } catch (Exception exception) {
+                log.warn("Failed to create signal score for arguments {}", arguments, exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong tao duoc signal score.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
+        if (isCommand(commandText, "/admin_health")) {
+            telegramMessageService.sendTextMessage(chatId, adminObservabilityService.getHealthMessage(chatId));
+            return;
+        }
+
+        if (isCommand(commandText, "/admin_metrics")) {
+            telegramMessageService.sendTextMessage(chatId, adminObservabilityService.getMetricsMessage(chatId));
             return;
         }
 
@@ -548,6 +584,7 @@ public class TelegramCommandService {
                 /chart_orderflow BTC
                 /ai BTC
                 /ai_chart BTC
+                /signal BTC
                 /val 1 BTC
                 /notif BTC 100000
                 /usdt
@@ -563,6 +600,8 @@ public class TelegramCommandService {
                 /watch_updates_off
                 /alert BTC > 70000
                 /myalerts
+                /admin_health
+                /admin_metrics
                 """);
     }
 
@@ -581,6 +620,7 @@ public class TelegramCommandService {
                 /chart_orderflow BTC - xem chart Order Flow
                 /ai BTC - AI quant market analysis bang GPT-5 mini
                 /ai_chart BTC - ve AI Quant Map
+                /signal BTC - tinh Signal Score tong hop technical + order flow
                 /val 1 BTC - tinh value theo USDT va VND
                 /notif BTC 100000 - nhac khi coin cham gia
                 /usdt - xem gia USDT/USD theo VND P2P
@@ -600,6 +640,8 @@ public class TelegramCommandService {
                 /alert BTC > 70000 - tao canh bao gia
                 /myalerts - xem alert
                 /delete_alert ALERT_ID - xoa alert
+                /admin_health - owner xem trang thai DB/Redis/CircuitBreaker
+                /admin_metrics - owner xem metric users/alerts/subscribers
 
                 Sap toi minh se them:
                 /stock VNM

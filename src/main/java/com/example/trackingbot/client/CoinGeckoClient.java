@@ -5,6 +5,9 @@ import com.example.trackingbot.dto.response.CryptoChartPoint;
 import com.example.trackingbot.dto.response.MarketCrypto;
 import com.example.trackingbot.dto.response.TrendingCrypto;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -25,6 +28,9 @@ public class CoinGeckoClient {
                 .build();
     }
 
+    @Retry(name = "coingecko")
+    @CircuitBreaker(name = "coingecko")
+    @RateLimiter(name = "coingecko")
     public CryptoPrice getSimplePrice(String coinId, String symbol) {
         List<CoinGeckoMarketData> marketData = getMarketData(List.of(coinId));
         if (marketData.isEmpty()) {
@@ -43,6 +49,9 @@ public class CoinGeckoClient {
         );
     }
 
+    @Retry(name = "coingecko")
+    @CircuitBreaker(name = "coingecko")
+    @RateLimiter(name = "coingecko")
     public List<CryptoChartPoint> getMarketChartRange(String coinId, Instant from, Instant to) {
         CoinGeckoMarketChartResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -67,6 +76,9 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    @Retry(name = "coingecko")
+    @CircuitBreaker(name = "coingecko")
+    @RateLimiter(name = "coingecko")
     public List<TrendingCrypto> getTrendingCryptos(int limit) {
         CoinGeckoTrendingResponse trendingResponse = restClient.get()
                 .uri("/search/trending")
@@ -99,12 +111,18 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    @Retry(name = "coingecko")
+    @CircuitBreaker(name = "coingecko")
+    @RateLimiter(name = "coingecko")
     public List<MarketCrypto> getTopMarketCryptos(int limit) {
         return getMarketDataByMarketCap(limit).stream()
                 .map(this::toMarketCrypto)
                 .toList();
     }
 
+    @Retry(name = "coingecko")
+    @CircuitBreaker(name = "coingecko")
+    @RateLimiter(name = "coingecko")
     public List<MarketCrypto> getMarketCryptosByMarketCap(int limit) {
         return getMarketDataByMarketCap(limit).stream()
                 .map(this::toMarketCrypto)

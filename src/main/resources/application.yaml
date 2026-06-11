@@ -33,6 +33,7 @@ telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN}
     webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+    admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID:}
 
 idea-chart:
   node-bin: ${IDEA_CHART_NODE_BIN:node}
@@ -45,3 +46,84 @@ openai:
   base-url: ${OPENAI_BASE_URL:https://api.openai.com}
   model: ${OPENAI_MODEL:gpt-5-mini}
   max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:2200}
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.web.client.RestClientException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+    instances:
+      coingecko:
+        base-config: default
+      binanceFutures:
+        max-attempts: 3
+        wait-duration: 300ms
+      binanceP2P:
+        max-attempts: 3
+        wait-duration: 500ms
+      openai:
+        max-attempts: 2
+        wait-duration: 1s
+
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        permitted-number-of-calls-in-half-open-state: 3
+        wait-duration-in-open-state: 15s
+    instances:
+      coingecko:
+        base-config: default
+      binanceFutures:
+        base-config: default
+        wait-duration-in-open-state: 10s
+      binanceP2P:
+        base-config: default
+      openai:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 60
+        permitted-number-of-calls-in-half-open-state: 2
+        wait-duration-in-open-state: 30s
+
+  ratelimiter:
+    instances:
+      coingecko:
+        limit-for-period: 5
+        limit-refresh-period: 10s
+        timeout-duration: 0
+      binanceFutures:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 0
+      binanceP2P:
+        limit-for-period: 2
+        limit-refresh-period: 5s
+        timeout-duration: 0
+      openai:
+        limit-for-period: 2
+        limit-refresh-period: 10s
+        timeout-duration: 0
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  health:
+    circuitbreakers:
+      enabled: true

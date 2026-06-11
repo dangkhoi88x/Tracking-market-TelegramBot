@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "telegram.bot")
 public record TelegramBotProperties(
         @NotBlank String token,
-        String webhookSecret
+        String webhookSecret,
+        String adminChatId
 ) {
 }

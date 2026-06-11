@@ -3,6 +3,9 @@ package com.example.trackingbot.client;
 import com.example.trackingbot.dto.response.BinanceKline;
 import com.example.trackingbot.dto.response.AggTrade;
 import com.example.trackingbot.dto.response.OrderBookLevel;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -23,6 +26,9 @@ public class BinanceFuturesClient {
                 .build();
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public List<BinanceKline> getKlines(String symbol, String interval, int limit) {
         List<List<Object>> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -51,14 +57,23 @@ public class BinanceFuturesClient {
         return klines;
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public List<OrderBookLevel> getBids(String symbol, int limit) {
         return getDepthSide(symbol, limit, "bids");
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public List<OrderBookLevel> getAsks(String symbol, int limit) {
         return getDepthSide(symbol, limit, "asks");
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public List<AggTrade> getAggTrades(String symbol, int limit) {
         List<Map<String, Object>> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -79,6 +94,9 @@ public class BinanceFuturesClient {
                 .toList();
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public BigDecimal getOpenInterest(String symbol) {
         Map<String, Object> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -96,6 +114,9 @@ public class BinanceFuturesClient {
         return toBigDecimal(response.get("openInterest"));
     }
 
+    @Retry(name = "binanceFutures")
+    @CircuitBreaker(name = "binanceFutures")
+    @RateLimiter(name = "binanceFutures")
     public BigDecimal getFundingRate(String symbol) {
         Map<String, Object> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder

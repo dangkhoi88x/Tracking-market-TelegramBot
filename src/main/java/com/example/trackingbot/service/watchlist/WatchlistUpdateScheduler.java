@@ -1,7 +1,7 @@
 package com.example.trackingbot.service.watchlist;
 
 import com.example.trackingbot.dto.entity.UserWatchlist;
-import com.example.trackingbot.service.telegram.TelegramMessageService;
+import com.example.trackingbot.service.telegram.TelegramAsyncService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ public class WatchlistUpdateScheduler {
     private static final Logger log = LoggerFactory.getLogger(WatchlistUpdateScheduler.class);
 
     private final WatchlistService watchlistService;
-    private final TelegramMessageService telegramMessageService;
+    private final TelegramAsyncService telegramAsyncService;
 
     @Scheduled(fixedRate = 300_000, initialDelay = 300_000)
     public void sendWatchlistUpdates() {
@@ -25,7 +25,7 @@ public class WatchlistUpdateScheduler {
             }
 
             try {
-                telegramMessageService.sendTextMessage(
+                telegramAsyncService.sendTextMessage(
                         watchlist.chatId(),
                         watchlistService.buildWatchlistUpdateMessage(watchlist)
                 );

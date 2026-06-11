@@ -5,6 +5,9 @@ import com.example.trackingbot.dto.response.AiPredictionResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -34,6 +37,9 @@ public class OpenAiClient {
         this.properties = properties;
     }
 
+    @Retry(name = "openai")
+    @CircuitBreaker(name = "openai")
+    @RateLimiter(name = "openai")
     public AiPredictionResponse analyze(Map<String, Object> marketData) {
         if (!properties.hasApiKey()) {
             throw new IllegalStateException("Missing OpenAI API key");

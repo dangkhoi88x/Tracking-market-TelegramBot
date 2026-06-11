@@ -2,6 +2,9 @@ package com.example.trackingbot.client;
 
 import com.example.trackingbot.dto.response.UsdtVndRate;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -23,6 +26,9 @@ public class BinanceP2PClient {
                 .build();
     }
 
+    @Retry(name = "binanceP2P")
+    @CircuitBreaker(name = "binanceP2P")
+    @RateLimiter(name = "binanceP2P")
     public UsdtVndRate getUsdtVndRate() {
         BinanceP2PResponse response = restClient.post()
                 .uri("/bapi/c2c/v2/friendly/c2c/adv/search")
