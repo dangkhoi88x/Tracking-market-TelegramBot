@@ -1,36 +1,30 @@
 package com.example.trackingbot.service.portfolio;
 
+import com.example.trackingbot.entity.PortfolioPositionEntity;
 import com.example.trackingbot.dto.entity.PortfolioPosition;
 import com.example.trackingbot.dto.response.CryptoPrice;
+import com.example.trackingbot.repository.PortfolioPositionRepository;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.example.trackingbot.service.telegram.TelegramUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class PortfolioService {
 
-    private static final String PORTFOLIO_SET_PREFIX = "portfolio:";
-    private static final String PORTFOLIO_POSITION_PREFIX = "portfolio_position:";
     private static final String SIDE_BUY = "BUY";
     private static final String SIDE_SELL = "SELL";
 
-    private final StringRedisTemplate redisTemplate;
     private final CryptoPriceService cryptoPriceService;
-
-    public PortfolioService(StringRedisTemplate redisTemplate, CryptoPriceService cryptoPriceService) {
-        this.redisTemplate = redisTemplate;
-        this.cryptoPriceService = cryptoPriceService;
-    }
+    private final TelegramUserService telegramUserService;
+    private final PortfolioPositionRepository portfolioPositionRepository;
 
     public String addBuy(Long chatId, String rawArguments) {
         return addPosition(chatId, SIDE_BUY, rawArguments);
@@ -40,6 +34,7 @@ public class PortfolioService {
         return addPosition(chatId, SIDE_SELL, rawArguments);
     }
 
+    @Transactional(readOnly = true)
     public String getPortfolioMessage(Long chatId) {
         List<PortfolioPosition> positions = getPositions(chatId);
         if (positions.isEmpty()) {
@@ -79,6 +74,7 @@ public class PortfolioService {
                 """;
     }
 
+    @Transactional
     private String addPosition(Long chatId, String side, String rawArguments) {
         ParsedPosition parsed = parsePosition(rawArguments);
         String symbol = cryptoPriceService.normalizeSymbol(parsed.symbol());
@@ -93,16 +89,14 @@ public class PortfolioService {
         }
 
         String positionId = UUID.randomUUID().toString();
-        redisTemplate.opsForHash().putAll(positionKey(positionId), Map.of(
-                "id", positionId,
-                "chatId", chatId.toString(),
-                "side", side,
-                "symbol", symbol,
-                "amount", parsed.amount() == null ? "" : parsed.amount().toPlainString(),
-                "entryPrice", parsed.entryPrice().toPlainString(),
-                "createdAt", Instant.now().toString()
+        portfolioPositionRepository.save(new PortfolioPositionEntity(
+                positionId,
+                telegramUserService.getOrCreateUser(chatId),
+                side,
+                symbol,
+                parsed.amount(),
+                parsed.entryPrice()
         ));
-        redisTemplate.opsForSet().add(portfolioSetKey(chatId), positionId);
 
         return """
                 Da luu %s position.
@@ -144,34 +138,21 @@ public class PortfolioService {
     }
 
     private List<PortfolioPosition> getPositions(Long chatId) {
-        Set<String> positionIds = redisTemplate.opsForSet().members(portfolioSetKey(chatId));
-        return Optional.ofNullable(positionIds)
-                .orElse(Collections.emptySet())
+        return portfolioPositionRepository.findByUserChatIdOrderByCreatedAtDesc(chatId)
                 .stream()
-                .map(this::findPositionById)
-                .flatMap(Optional::stream)
+                .map(this::toPortfolioPosition)
                 .toList();
     }
 
-    private Optional<PortfolioPosition> findPositionById(String positionId) {
-        Map<Object, Object> rawPosition = redisTemplate.opsForHash().entries(positionKey(positionId));
-        if (rawPosition.isEmpty()) {
-            return Optional.empty();
-        }
-
-        try {
-            String rawAmount = value(rawPosition, "amount");
-            return Optional.of(new PortfolioPosition(
-                    value(rawPosition, "id"),
-                    Long.parseLong(value(rawPosition, "chatId")),
-                    value(rawPosition, "side"),
-                    value(rawPosition, "symbol"),
-                    rawAmount.isBlank() ? null : new BigDecimal(rawAmount),
-                    new BigDecimal(value(rawPosition, "entryPrice"))
-            ));
-        } catch (RuntimeException exception) {
-            return Optional.empty();
-        }
+    private PortfolioPosition toPortfolioPosition(PortfolioPositionEntity entity) {
+        return new PortfolioPosition(
+                entity.getId(),
+                entity.getUser().getChatId(),
+                entity.getSide(),
+                entity.getSymbol(),
+                entity.getAmount(),
+                entity.getEntryPrice()
+        );
     }
 
     private String formatPosition(PortfolioPosition position, CryptoPrice currentPrice) {
@@ -242,23 +223,6 @@ public class PortfolioService {
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid number", exception);
         }
-    }
-
-    private String value(Map<Object, Object> rawPosition, String field) {
-        Object value = rawPosition.get(field);
-        if (value == null) {
-            throw new IllegalArgumentException("Missing position field: " + field);
-        }
-
-        return value.toString();
-    }
-
-    private String portfolioSetKey(Long chatId) {
-        return PORTFOLIO_SET_PREFIX + chatId;
-    }
-
-    private String positionKey(String positionId) {
-        return PORTFOLIO_POSITION_PREFIX + positionId;
     }
 
     private String formatMoney(BigDecimal value) {

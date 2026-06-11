@@ -4,6 +4,7 @@ import com.example.trackingbot.dto.entity.CryptoAlert;
 import com.example.trackingbot.dto.response.CryptoPrice;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
 import com.example.trackingbot.service.telegram.TelegramMessageService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
 @Component
+@RequiredArgsConstructor
 public class AlertCheckerScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(AlertCheckerScheduler.class);
@@ -19,16 +21,6 @@ public class AlertCheckerScheduler {
     private final AlertService alertService;
     private final CryptoPriceService cryptoPriceService;
     private final TelegramMessageService telegramMessageService;
-
-    public AlertCheckerScheduler(
-            AlertService alertService,
-            CryptoPriceService cryptoPriceService,
-            TelegramMessageService telegramMessageService
-    ) {
-        this.alertService = alertService;
-        this.cryptoPriceService = cryptoPriceService;
-        this.telegramMessageService = telegramMessageService;
-    }
 
     @Scheduled(fixedRate = 60_000, initialDelay = 10_000)
     public void checkActiveAlerts() {

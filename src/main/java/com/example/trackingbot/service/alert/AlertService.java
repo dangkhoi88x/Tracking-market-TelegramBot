@@ -1,33 +1,28 @@
 package com.example.trackingbot.service.alert;
 
 import com.example.trackingbot.dto.entity.CryptoAlert;
+import com.example.trackingbot.entity.PriceAlertEntity;
+import com.example.trackingbot.repository.PriceAlertRepository;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.example.trackingbot.service.telegram.TelegramUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class AlertService {
 
-    private static final String ALERT_KEY_PREFIX = "alert:";
-    private static final String ACTIVE_ALERTS_KEY = "alerts:active";
-
-    private final StringRedisTemplate redisTemplate;
     private final CryptoPriceService cryptoPriceService;
+    private final TelegramUserService telegramUserService;
+    private final PriceAlertRepository priceAlertRepository;
 
-    public AlertService(StringRedisTemplate redisTemplate, CryptoPriceService cryptoPriceService) {
-        this.redisTemplate = redisTemplate;
-        this.cryptoPriceService = cryptoPriceService;
-    }
-
+    @Transactional
     public String createAlert(Long chatId, String rawArguments) {
         AlertCommand command = parseAlertCommand(rawArguments);
         String symbol = cryptoPriceService.normalizeSymbol(command.symbol());
@@ -37,18 +32,13 @@ public class AlertService {
         }
 
         String alertId = UUID.randomUUID().toString();
-        String alertKey = alertKey(alertId);
-
-        redisTemplate.opsForHash().putAll(alertKey, Map.of(
-                "id", alertId,
-                "chatId", chatId.toString(),
-                "symbol", symbol,
-                "operator", command.operator(),
-                "targetPrice", command.targetPrice().toPlainString(),
-                "active", "true",
-                "createdAt", Instant.now().toString()
+        priceAlertRepository.save(new PriceAlertEntity(
+                alertId,
+                telegramUserService.getOrCreateUser(chatId),
+                symbol,
+                command.operator(),
+                command.targetPrice()
         ));
-        redisTemplate.opsForSet().add(ACTIVE_ALERTS_KEY, alertId);
 
         return """
                 Da tao alert.
@@ -97,6 +87,7 @@ public class AlertService {
                 """.formatted(cryptoPriceService.getSupportedSymbolsText());
     }
 
+    @Transactional(readOnly = true)
     public String getUserAlertsMessage(Long chatId) {
         List<CryptoAlert> userAlerts = getUserActiveAlerts(chatId);
         if (userAlerts.isEmpty()) {
@@ -122,6 +113,7 @@ public class AlertService {
         return message.toString();
     }
 
+    @Transactional
     public String deleteAlert(Long chatId, String rawAlertId) {
         String alertId = rawAlertId == null ? "" : rawAlertId.trim();
         if (alertId.isBlank()) {
@@ -142,76 +134,45 @@ public class AlertService {
             return "Ban khong co quyen xoa alert nay.";
         }
 
-        redisTemplate.opsForHash().put(alertKey(alertId), "active", "false");
-        redisTemplate.opsForHash().put(alertKey(alertId), "deletedAt", Instant.now().toString());
-        redisTemplate.opsForSet().remove(ACTIVE_ALERTS_KEY, alertId);
+        priceAlertRepository.findById(alertId).ifPresent(PriceAlertEntity::markDeleted);
 
         return "Da xoa alert " + alertId + ".";
     }
 
+    @Transactional(readOnly = true)
     public List<CryptoAlert> getActiveAlerts() {
-        Set<String> alertIds = redisTemplate.opsForSet().members(ACTIVE_ALERTS_KEY);
-        return Optional.ofNullable(alertIds)
-                .orElse(Collections.emptySet())
+        return priceAlertRepository.findByActiveTrueOrderByCreatedAtAsc()
                 .stream()
-                .map(this::findAlertById)
-                .flatMap(Optional::stream)
-                .filter(CryptoAlert::active)
+                .map(this::toCryptoAlert)
                 .toList();
     }
 
     private List<CryptoAlert> getUserActiveAlerts(Long chatId) {
-        Set<String> alertKeys = redisTemplate.keys(ALERT_KEY_PREFIX + "*");
-        return Optional.ofNullable(alertKeys)
-                .orElse(Collections.emptySet())
+        return priceAlertRepository.findByUserChatIdAndActiveTrueOrderByCreatedAtDesc(chatId)
                 .stream()
-                .map(this::alertIdFromKey)
-                .map(this::findAlertById)
-                .flatMap(Optional::stream)
-                .filter(CryptoAlert::active)
-                .filter(alert -> alert.chatId().equals(chatId))
+                .map(this::toCryptoAlert)
                 .toList();
     }
 
-    private String alertIdFromKey(String alertKey) {
-        return alertKey.substring(ALERT_KEY_PREFIX.length());
-    }
-
+    @Transactional
     public void markTriggered(String alertId) {
-        redisTemplate.opsForHash().put(alertKey(alertId), "active", "false");
-        redisTemplate.opsForHash().put(alertKey(alertId), "triggeredAt", Instant.now().toString());
-        redisTemplate.opsForSet().remove(ACTIVE_ALERTS_KEY, alertId);
+        priceAlertRepository.findById(alertId).ifPresent(PriceAlertEntity::markTriggered);
     }
 
     private Optional<CryptoAlert> findAlertById(String alertId) {
-        Map<Object, Object> rawAlert = redisTemplate.opsForHash().entries(alertKey(alertId));
-        if (rawAlert.isEmpty()) {
-            redisTemplate.opsForSet().remove(ACTIVE_ALERTS_KEY, alertId);
-            return Optional.empty();
-        }
-
-        try {
-            return Optional.of(new CryptoAlert(
-                    value(rawAlert, "id"),
-                    Long.parseLong(value(rawAlert, "chatId")),
-                    value(rawAlert, "symbol"),
-                    value(rawAlert, "operator"),
-                    new BigDecimal(value(rawAlert, "targetPrice")),
-                    Boolean.parseBoolean(value(rawAlert, "active"))
-            ));
-        } catch (RuntimeException exception) {
-            redisTemplate.opsForSet().remove(ACTIVE_ALERTS_KEY, alertId);
-            return Optional.empty();
-        }
+        return priceAlertRepository.findById(alertId)
+                .map(this::toCryptoAlert);
     }
 
-    private String value(Map<Object, Object> rawAlert, String field) {
-        Object value = rawAlert.get(field);
-        if (value == null) {
-            throw new IllegalArgumentException("Missing alert field: " + field);
-        }
-
-        return value.toString();
+    private CryptoAlert toCryptoAlert(PriceAlertEntity alert) {
+        return new CryptoAlert(
+                alert.getId(),
+                alert.getUser().getChatId(),
+                alert.getSymbol(),
+                alert.getOperator(),
+                alert.getTargetPrice(),
+                alert.isActive()
+        );
     }
 
     private AlertCommand parseAlertCommand(String rawArguments) {
@@ -279,10 +240,6 @@ public class AlertService {
                 Ma crypto dang ho tro:
                 %s
                 """.formatted(cryptoPriceService.getSupportedSymbolsText());
-    }
-
-    private String alertKey(String alertId) {
-        return ALERT_KEY_PREFIX + alertId;
     }
 
     private record AlertCommand(

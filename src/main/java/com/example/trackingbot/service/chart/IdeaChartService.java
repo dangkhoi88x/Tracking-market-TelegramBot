@@ -11,6 +11,7 @@ import com.example.trackingbot.service.analysis.OrderFlowService;
 import com.example.trackingbot.service.analysis.TechnicalAnalysisService;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -27,6 +28,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
+@RequiredArgsConstructor
 public class IdeaChartService {
 
     private static final String DEFAULT_INTERVAL = "4h";
@@ -36,18 +38,6 @@ public class IdeaChartService {
     private final OrderFlowService orderFlowService;
     private final IdeaChartProperties properties;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public IdeaChartService(
-            CryptoPriceService cryptoPriceService,
-            TechnicalAnalysisService technicalAnalysisService,
-            OrderFlowService orderFlowService,
-            IdeaChartProperties properties
-    ) {
-        this.cryptoPriceService = cryptoPriceService;
-        this.technicalAnalysisService = technicalAnalysisService;
-        this.orderFlowService = orderFlowService;
-        this.properties = properties;
-    }
 
     public IdeaChartImage createIdeaChart(String rawArguments) {
         return createChart(rawArguments, IdeaChartType.IDEA);

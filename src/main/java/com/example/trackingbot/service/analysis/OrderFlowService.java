@@ -4,6 +4,7 @@ import com.example.trackingbot.client.BinanceFuturesClient;
 import com.example.trackingbot.dto.response.AggTrade;
 import com.example.trackingbot.dto.response.OrderBookLevel;
 import com.example.trackingbot.dto.response.OrderFlowAnalysis;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,16 +12,13 @@ import java.math.RoundingMode;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class OrderFlowService {
 
     private static final int ORDER_BOOK_LIMIT = 100;
     private static final int AGG_TRADE_LIMIT = 200;
 
     private final BinanceFuturesClient binanceFuturesClient;
-
-    public OrderFlowService(BinanceFuturesClient binanceFuturesClient) {
-        this.binanceFuturesClient = binanceFuturesClient;
-    }
 
     public OrderFlowAnalysis analyze(String symbol) {
         String pair = symbol + "USDT";

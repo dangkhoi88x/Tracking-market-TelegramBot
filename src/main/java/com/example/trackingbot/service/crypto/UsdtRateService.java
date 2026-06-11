@@ -2,6 +2,7 @@ package com.example.trackingbot.service.crypto;
 
 import com.example.trackingbot.client.BinanceP2PClient;
 import com.example.trackingbot.dto.response.UsdtVndRate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @Service
+@RequiredArgsConstructor
 public class UsdtRateService {
 
     private static final String USDT_RATE_CACHE = "usdtRates";
@@ -23,11 +25,6 @@ public class UsdtRateService {
 
     private final BinanceP2PClient binanceP2PClient;
     private final CacheManager cacheManager;
-
-    public UsdtRateService(BinanceP2PClient binanceP2PClient, CacheManager cacheManager) {
-        this.binanceP2PClient = binanceP2PClient;
-        this.cacheManager = cacheManager;
-    }
 
     public UsdtVndRate getUsdtVndRate() {
         Cache cache = cacheManager.getCache(USDT_RATE_CACHE);

@@ -10,6 +10,7 @@ import com.example.trackingbot.dto.response.TechnicalAnalysis;
 import com.example.trackingbot.dto.response.Trendline;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 @Service
+@RequiredArgsConstructor
 public class AiPredictionService {
 
     private static final String AI_PREDICTION_CACHE = "ai-prediction";
@@ -41,22 +43,6 @@ public class AiPredictionService {
     private final IdeaChartProperties ideaChartProperties;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public AiPredictionService(
-            CryptoPriceService cryptoPriceService,
-            TechnicalAnalysisService technicalAnalysisService,
-            OrderFlowService orderFlowService,
-            OpenAiClient openAiClient,
-            IdeaChartProperties ideaChartProperties,
-            CacheManager cacheManager
-    ) {
-        this.cryptoPriceService = cryptoPriceService;
-        this.technicalAnalysisService = technicalAnalysisService;
-        this.orderFlowService = orderFlowService;
-        this.openAiClient = openAiClient;
-        this.ideaChartProperties = ideaChartProperties;
-        this.cacheManager = cacheManager;
-    }
 
     public String getHelpMessage() {
         return """

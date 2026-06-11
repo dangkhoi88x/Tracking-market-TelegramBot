@@ -5,6 +5,7 @@ import com.example.trackingbot.dto.response.CryptoChartImage;
 import com.example.trackingbot.dto.response.CryptoChartPoint;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class CryptoChartService {
 
     private static final String CRYPTO_CHART_CACHE = "cryptoCharts";
@@ -40,16 +42,6 @@ public class CryptoChartService {
     private final CryptoPriceService cryptoPriceService;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public CryptoChartService(
-            CoinGeckoClient coinGeckoClient,
-            CryptoPriceService cryptoPriceService,
-            CacheManager cacheManager
-    ) {
-        this.coinGeckoClient = coinGeckoClient;
-        this.cryptoPriceService = cryptoPriceService;
-        this.cacheManager = cacheManager;
-    }
 
     public boolean isHelpCommand(String rawArgument) {
         String argument = cryptoPriceService.normalizeSymbol(rawArgument);

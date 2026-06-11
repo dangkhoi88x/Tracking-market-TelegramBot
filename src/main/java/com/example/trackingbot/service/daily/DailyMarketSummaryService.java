@@ -1,36 +1,35 @@
 package com.example.trackingbot.service.daily;
 
 import com.example.trackingbot.client.CoinGeckoClient;
+import com.example.trackingbot.entity.DailySettingEntity;
 import com.example.trackingbot.dto.response.MarketCrypto;
 import com.example.trackingbot.dto.response.TrendingCrypto;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.example.trackingbot.repository.DailySettingRepository;
+import com.example.trackingbot.service.telegram.TelegramUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 public class DailyMarketSummaryService {
 
-    private static final String DAILY_SUBSCRIBERS_KEY = "daily_market_summary:subscribers";
     private static final int TOP_LIMIT = 10;
     private static final int MOVER_UNIVERSE_LIMIT = 250;
 
-    private final StringRedisTemplate redisTemplate;
     private final CoinGeckoClient coinGeckoClient;
+    private final TelegramUserService telegramUserService;
+    private final DailySettingRepository dailySettingRepository;
 
-    public DailyMarketSummaryService(StringRedisTemplate redisTemplate, CoinGeckoClient coinGeckoClient) {
-        this.redisTemplate = redisTemplate;
-        this.coinGeckoClient = coinGeckoClient;
-    }
-
+    @Transactional
     public String enableDailySummary(Long chatId) {
-        redisTemplate.opsForSet().add(DAILY_SUBSCRIBERS_KEY, chatId.toString());
+        DailySettingEntity setting = getOrCreateSetting(chatId);
+        setting.setEnabled(true);
         return """
                 Da bat Daily Market Summary.
 
@@ -39,18 +38,31 @@ public class DailyMarketSummaryService {
                 """;
     }
 
+    @Transactional
     public String disableDailySummary(Long chatId) {
-        redisTemplate.opsForSet().remove(DAILY_SUBSCRIBERS_KEY, chatId.toString());
+        DailySettingEntity setting = getOrCreateSetting(chatId);
+        setting.setEnabled(false);
         return "Da tat Daily Market Summary.";
     }
 
+    @Transactional
+    public void setWatchUpdatesEnabled(Long chatId, boolean enabled) {
+        DailySettingEntity setting = getOrCreateSetting(chatId);
+        setting.setWatchUpdatesEnabled(enabled);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isWatchUpdatesEnabled(Long chatId) {
+        return dailySettingRepository.findByUserChatId(chatId)
+                .map(DailySettingEntity::isWatchUpdatesEnabled)
+                .orElse(true);
+    }
+
+    @Transactional(readOnly = true)
     public List<Long> getSubscriberChatIds() {
-        Set<String> chatIds = redisTemplate.opsForSet().members(DAILY_SUBSCRIBERS_KEY);
-        return Optional.ofNullable(chatIds)
-                .orElse(Collections.emptySet())
+        return dailySettingRepository.findByEnabledTrueOrderByUserChatIdAsc()
                 .stream()
-                .map(this::parseChatId)
-                .flatMap(Optional::stream)
+                .map(setting -> setting.getUser().getChatId())
                 .toList();
     }
 
@@ -136,13 +148,11 @@ public class DailyMarketSummaryService {
         return message.toString().stripTrailing();
     }
 
-    private Optional<Long> parseChatId(String rawChatId) {
-        try {
-            return Optional.of(Long.parseLong(rawChatId));
-        } catch (NumberFormatException exception) {
-            redisTemplate.opsForSet().remove(DAILY_SUBSCRIBERS_KEY, rawChatId);
-            return Optional.empty();
-        }
+    private DailySettingEntity getOrCreateSetting(Long chatId) {
+        return dailySettingRepository.findByUserChatId(chatId)
+                .orElseGet(() -> dailySettingRepository.save(
+                        new DailySettingEntity(telegramUserService.getOrCreateUser(chatId), false)
+                ));
     }
 
     private String formatSignedPercent(BigDecimal value) {

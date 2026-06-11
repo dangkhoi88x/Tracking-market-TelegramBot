@@ -2,21 +2,18 @@ package com.example.trackingbot.service.crypto;
 
 import com.example.trackingbot.dto.response.CryptoPrice;
 import com.example.trackingbot.dto.response.UsdtVndRate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @Service
+@RequiredArgsConstructor
 public class ValueConversionService {
 
     private final CryptoPriceService cryptoPriceService;
     private final UsdtRateService usdtRateService;
-
-    public ValueConversionService(CryptoPriceService cryptoPriceService, UsdtRateService usdtRateService) {
-        this.cryptoPriceService = cryptoPriceService;
-        this.usdtRateService = usdtRateService;
-    }
 
     public String getValueMessage(String rawArguments) {
         ValueCommand command = parseValueCommand(rawArguments);

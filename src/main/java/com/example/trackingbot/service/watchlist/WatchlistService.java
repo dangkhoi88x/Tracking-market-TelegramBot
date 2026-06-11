@@ -1,34 +1,34 @@
 package com.example.trackingbot.service.watchlist;
 
 import com.example.trackingbot.dto.entity.UserWatchlist;
+import com.example.trackingbot.entity.WatchlistItemEntity;
 import com.example.trackingbot.dto.response.CryptoPrice;
+import com.example.trackingbot.repository.WatchlistItemRepository;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.example.trackingbot.service.daily.DailyMarketSummaryService;
+import com.example.trackingbot.service.telegram.TelegramUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 public class WatchlistService {
 
-    private static final String WATCHLIST_KEY_PREFIX = "watchlist:";
-    private static final String WATCH_UPDATES_KEY_PREFIX = "watch_updates:";
-    private static final String WATCH_UPDATES_ON = "on";
-    private static final String WATCH_UPDATES_OFF = "off";
-
-    private final StringRedisTemplate redisTemplate;
     private final CryptoPriceService cryptoPriceService;
+    private final TelegramUserService telegramUserService;
+    private final WatchlistItemRepository watchlistItemRepository;
+    private final DailyMarketSummaryService dailyMarketSummaryService;
 
-    public WatchlistService(StringRedisTemplate redisTemplate, CryptoPriceService cryptoPriceService) {
-        this.redisTemplate = redisTemplate;
-        this.cryptoPriceService = cryptoPriceService;
-    }
-
+    @Transactional
     public String addToWatchlist(Long chatId, String rawSymbol) {
         String symbol = cryptoPriceService.normalizeSymbol(rawSymbol);
         Optional<String> coinId = cryptoPriceService.findCoinId(symbol);
@@ -37,22 +37,23 @@ public class WatchlistService {
             return unsupportedSymbolMessage();
         }
 
-        Long addedCount = redisTemplate.opsForSet().add(watchlistKey(chatId), symbol);
-        if (addedCount != null && addedCount == 0) {
+        if (watchlistItemRepository.existsByUserChatIdAndSymbol(chatId, symbol)) {
             return symbol + " da co trong watchlist cua ban roi.";
         }
 
+        watchlistItemRepository.save(new WatchlistItemEntity(telegramUserService.getOrCreateUser(chatId), symbol));
         return "Da them " + symbol + " vao watchlist.";
     }
 
+    @Transactional
     public String removeFromWatchlist(Long chatId, String rawSymbol) {
         String symbol = cryptoPriceService.normalizeSymbol(rawSymbol);
         if (symbol.isBlank()) {
             return getHelpMessage();
         }
 
-        Long removedCount = redisTemplate.opsForSet().remove(watchlistKey(chatId), symbol);
-        if (removedCount == null || removedCount == 0) {
+        long removedCount = watchlistItemRepository.deleteByUserChatIdAndSymbol(chatId, symbol);
+        if (removedCount == 0) {
             return symbol + " khong co trong watchlist cua ban.";
         }
 
@@ -79,7 +80,7 @@ public class WatchlistService {
     }
 
     public String enableWatchUpdates(Long chatId) {
-        redisTemplate.opsForValue().set(watchUpdatesKey(chatId), WATCH_UPDATES_ON);
+        dailyMarketSummaryService.setWatchUpdatesEnabled(chatId, true);
         return """
                 Da bat tu dong cap nhat watchlist moi 5 phut.
 
@@ -88,7 +89,7 @@ public class WatchlistService {
     }
 
     public String disableWatchUpdates(Long chatId) {
-        redisTemplate.opsForValue().set(watchUpdatesKey(chatId), WATCH_UPDATES_OFF);
+        dailyMarketSummaryService.setWatchUpdatesEnabled(chatId, false);
         return """
                 Da tat tu dong cap nhat watchlist.
 
@@ -98,18 +99,20 @@ public class WatchlistService {
     }
 
     public boolean isWatchUpdatesEnabled(Long chatId) {
-        String setting = redisTemplate.opsForValue().get(watchUpdatesKey(chatId));
-        return setting == null || WATCH_UPDATES_ON.equalsIgnoreCase(setting);
+        return dailyMarketSummaryService.isWatchUpdatesEnabled(chatId);
     }
 
+    @Transactional(readOnly = true)
     public List<UserWatchlist> getAllWatchlists() {
-        Set<String> watchlistKeys = redisTemplate.keys(WATCHLIST_KEY_PREFIX + "*");
-        return Optional.ofNullable(watchlistKeys)
-                .orElse(Collections.emptySet())
+        Map<Long, List<String>> groupedSymbols = new LinkedHashMap<>();
+        for (WatchlistItemEntity item : watchlistItemRepository.findAllByOrderByUserChatIdAscSymbolAsc()) {
+            groupedSymbols.computeIfAbsent(item.getUser().getChatId(), ignored -> new ArrayList<>())
+                    .add(item.getSymbol());
+        }
+
+        return groupedSymbols.entrySet()
                 .stream()
-                .map(this::toUserWatchlist)
-                .flatMap(Optional::stream)
-                .filter(watchlist -> !watchlist.symbols().isEmpty())
+                .map(entry -> new UserWatchlist(entry.getKey(), entry.getValue()))
                 .toList();
     }
 
@@ -136,33 +139,12 @@ public class WatchlistService {
                 """.formatted(cryptoPriceService.getSupportedSymbolsText());
     }
 
-    private String watchlistKey(Long chatId) {
-        return WATCHLIST_KEY_PREFIX + chatId;
-    }
-
-    private String watchUpdatesKey(Long chatId) {
-        return WATCH_UPDATES_KEY_PREFIX + chatId;
-    }
-
+    @Transactional(readOnly = true)
     private List<String> getSymbols(Long chatId) {
-        Set<String> watchlistMembers = redisTemplate.opsForSet().members(watchlistKey(chatId));
-        return Optional.ofNullable(watchlistMembers)
-                .orElse(Collections.emptySet())
+        return watchlistItemRepository.findByUserChatIdOrderBySymbolAsc(chatId)
                 .stream()
-                .sorted()
+                .map(WatchlistItemEntity::getSymbol)
                 .toList();
-    }
-
-    private Optional<UserWatchlist> toUserWatchlist(String watchlistKey) {
-        String rawChatId = watchlistKey.substring(WATCHLIST_KEY_PREFIX.length());
-        try {
-            return Optional.of(new UserWatchlist(
-                    Long.parseLong(rawChatId),
-                    getSymbols(Long.parseLong(rawChatId))
-            ));
-        } catch (NumberFormatException exception) {
-            return Optional.empty();
-        }
     }
 
     private String buildWatchlistPriceMessage(String title, List<String> symbols) {

@@ -13,6 +13,7 @@ import com.example.trackingbot.service.crypto.ValueConversionService;
 import com.example.trackingbot.service.daily.DailyMarketSummaryService;
 import com.example.trackingbot.service.portfolio.PortfolioService;
 import com.example.trackingbot.service.watchlist.WatchlistService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TelegramCommandService {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramCommandService.class);
@@ -36,34 +38,6 @@ public class TelegramCommandService {
     private final UsdtRateService usdtRateService;
     private final IdeaChartService ideaChartService;
     private final AiPredictionService aiPredictionService;
-
-    public TelegramCommandService(
-            TelegramMessageService telegramMessageService,
-            CryptoPriceService cryptoPriceService,
-            CryptoChartService cryptoChartService,
-            WatchlistService watchlistService,
-            AlertService alertService,
-            TrendingCryptoService trendingCryptoService,
-            PortfolioService portfolioService,
-            DailyMarketSummaryService dailyMarketSummaryService,
-            ValueConversionService valueConversionService,
-            UsdtRateService usdtRateService,
-            IdeaChartService ideaChartService,
-            AiPredictionService aiPredictionService
-    ) {
-        this.telegramMessageService = telegramMessageService;
-        this.cryptoPriceService = cryptoPriceService;
-        this.cryptoChartService = cryptoChartService;
-        this.watchlistService = watchlistService;
-        this.alertService = alertService;
-        this.trendingCryptoService = trendingCryptoService;
-        this.portfolioService = portfolioService;
-        this.dailyMarketSummaryService = dailyMarketSummaryService;
-        this.valueConversionService = valueConversionService;
-        this.usdtRateService = usdtRateService;
-        this.ideaChartService = ideaChartService;
-        this.aiPredictionService = aiPredictionService;
-    }
 
     public void handleTextMessage(Long chatId, String text) {
         if (text == null || text.isBlank()) {

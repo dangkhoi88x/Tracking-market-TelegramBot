@@ -2,6 +2,7 @@ package com.example.trackingbot.service.crypto;
 
 import com.example.trackingbot.client.CoinGeckoClient;
 import com.example.trackingbot.dto.response.CryptoPrice;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CryptoPriceService {
 
     private static final String CRYPTO_PRICE_CACHE = "cryptoPrices";
@@ -29,11 +31,6 @@ public class CryptoPriceService {
 
     private final CoinGeckoClient coinGeckoClient;
     private final CacheManager cacheManager;
-
-    public CryptoPriceService(CoinGeckoClient coinGeckoClient, CacheManager cacheManager) {
-        this.coinGeckoClient = coinGeckoClient;
-        this.cacheManager = cacheManager;
-    }
 
     public String getPriceMessage(String rawSymbol) {
         String symbol = normalizeSymbol(rawSymbol);

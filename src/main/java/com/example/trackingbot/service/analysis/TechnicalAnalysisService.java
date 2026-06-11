@@ -7,6 +7,7 @@ import com.example.trackingbot.dto.response.PivotPoint;
 import com.example.trackingbot.dto.response.TechnicalAnalysis;
 import com.example.trackingbot.dto.response.Trendline;
 import com.example.trackingbot.dto.response.TrendlineAnalysis;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TechnicalAnalysisService {
 
     private static final int KLINE_LIMIT = 160;
@@ -27,10 +29,6 @@ public class TechnicalAnalysisService {
     private static final BigDecimal BREAKOUT_VOLUME_MULTIPLIER = BigDecimal.valueOf(1.5);
 
     private final BinanceFuturesClient binanceFuturesClient;
-
-    public TechnicalAnalysisService(BinanceFuturesClient binanceFuturesClient) {
-        this.binanceFuturesClient = binanceFuturesClient;
-    }
 
     public TechnicalAnalysis analyze(String symbol, String interval) {
         String pair = symbol + "USDT";

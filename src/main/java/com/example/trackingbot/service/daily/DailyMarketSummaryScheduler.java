@@ -1,26 +1,20 @@
 package com.example.trackingbot.service.daily;
 
 import com.example.trackingbot.service.telegram.TelegramMessageService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class DailyMarketSummaryScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DailyMarketSummaryScheduler.class);
 
     private final DailyMarketSummaryService dailyMarketSummaryService;
     private final TelegramMessageService telegramMessageService;
-
-    public DailyMarketSummaryScheduler(
-            DailyMarketSummaryService dailyMarketSummaryService,
-            TelegramMessageService telegramMessageService
-    ) {
-        this.dailyMarketSummaryService = dailyMarketSummaryService;
-        this.telegramMessageService = telegramMessageService;
-    }
 
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Ho_Chi_Minh")
     public void sendDailySummary() {
