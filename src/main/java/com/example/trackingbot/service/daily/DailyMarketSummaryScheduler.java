@@ -1,5 +1,6 @@
 package com.example.trackingbot.service.daily;
 
+import com.example.trackingbot.model.NotificationType;
 import com.example.trackingbot.service.notification.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ public class DailyMarketSummaryScheduler {
                 //rabbitmq
                 notificationPublisher.publishTelegramNotification(
                         chatId,
-                        "DAILY_SUMMARY",
+                        NotificationType.DAILY_SUMMARY,
                         summaryMessage
 
                 );

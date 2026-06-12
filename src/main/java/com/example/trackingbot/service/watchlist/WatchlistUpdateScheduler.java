@@ -1,6 +1,7 @@
 package com.example.trackingbot.service.watchlist;
 
 import com.example.trackingbot.model.UserWatchlist;
+import com.example.trackingbot.model.NotificationType;
 import com.example.trackingbot.service.notification.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -28,7 +29,7 @@ public class WatchlistUpdateScheduler {
                // rabbitMQ
                 notificationPublisher.publishTelegramNotification(
                         watchlist.chatId(),
-                        "WATCHLIST_UPDATE",
+                        NotificationType.WATCHLIST_UPDATE,
                         watchlistService.buildWatchlistUpdateMessage(watchlist)
                 );
 

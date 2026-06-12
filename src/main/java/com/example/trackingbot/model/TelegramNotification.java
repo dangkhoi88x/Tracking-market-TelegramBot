@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public record TelegramNotification(String id,
                                    Long chatId,
-                                   String type,
+                                   NotificationType type,
                                    String text,
                                    Instant createdAt) {
 }

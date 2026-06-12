@@ -2,6 +2,7 @@ package com.example.trackingbot.service.alert;
 
 import com.example.trackingbot.model.CryptoAlert;
 import com.example.trackingbot.dto.response.CryptoPrice;
+import com.example.trackingbot.model.NotificationType;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
 import com.example.trackingbot.service.notification.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class AlertCheckerScheduler {
                 if (isTriggered(currentPrice.priceUsd(), alert.operator(), alert.targetPrice())) {
                     notificationPublisher.publishTelegramNotification(
                             alert.chatId(),
-                            "ALERT_TRIGGERED",
+                            NotificationType.ALERT_TRIGGERED,
                             buildTriggeredMessage(alert, currentPrice)
                     );
                     alertService.markTriggered(alert.id());
