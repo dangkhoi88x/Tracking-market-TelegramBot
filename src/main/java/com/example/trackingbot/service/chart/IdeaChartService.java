@@ -1,12 +1,12 @@
 package com.example.trackingbot.service.chart;
 
 import com.example.trackingbot.config.IdeaChartProperties;
-import com.example.trackingbot.dto.response.BinanceKline;
+import com.example.trackingbot.model.BinanceKline;
 import com.example.trackingbot.dto.response.IdeaChartImage;
-import com.example.trackingbot.dto.response.OrderFlowAnalysis;
-import com.example.trackingbot.dto.response.PivotPoint;
-import com.example.trackingbot.dto.response.TechnicalAnalysis;
-import com.example.trackingbot.dto.response.Trendline;
+import com.example.trackingbot.model.OrderFlowAnalysis;
+import com.example.trackingbot.model.PivotPoint;
+import com.example.trackingbot.model.TechnicalAnalysis;
+import com.example.trackingbot.model.Trendline;
 import com.example.trackingbot.service.analysis.OrderFlowService;
 import com.example.trackingbot.service.analysis.TechnicalAnalysisService;
 import com.example.trackingbot.service.crypto.CryptoPriceService;

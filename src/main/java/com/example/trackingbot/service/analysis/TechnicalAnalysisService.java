@@ -1,12 +1,12 @@
 package com.example.trackingbot.service.analysis;
 
 import com.example.trackingbot.client.BinanceFuturesClient;
-import com.example.trackingbot.dto.response.BinanceKline;
-import com.example.trackingbot.dto.response.BreakoutSignal;
-import com.example.trackingbot.dto.response.PivotPoint;
-import com.example.trackingbot.dto.response.TechnicalAnalysis;
-import com.example.trackingbot.dto.response.Trendline;
-import com.example.trackingbot.dto.response.TrendlineAnalysis;
+import com.example.trackingbot.model.BinanceKline;
+import com.example.trackingbot.model.BreakoutSignal;
+import com.example.trackingbot.model.PivotPoint;
+import com.example.trackingbot.model.TechnicalAnalysis;
+import com.example.trackingbot.model.Trendline;
+import com.example.trackingbot.model.TrendlineAnalysis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

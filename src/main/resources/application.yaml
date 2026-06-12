@@ -12,7 +12,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: ${RABBITMQ_USER:tracking_bot}
+    password: ${RABBITMQ_PASSWORD:tracking_bot_password}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1s
+          multiplier: 2
+          max-attempts: 3
+          max-interval: 10s
   flyway:
     enabled: true
     locations: classpath:db/migration

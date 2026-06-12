@@ -1,7 +1,7 @@
 package com.example.trackingbot.service.portfolio;
 
 import com.example.trackingbot.entity.PortfolioPositionEntity;
-import com.example.trackingbot.dto.entity.PortfolioPosition;
+import com.example.trackingbot.model.PortfolioPosition;
 import com.example.trackingbot.dto.response.CryptoPrice;
 import com.example.trackingbot.repository.PortfolioPositionRepository;
 import com.example.trackingbot.service.crypto.CryptoPriceService;

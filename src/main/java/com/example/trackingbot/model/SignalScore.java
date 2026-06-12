@@ -1,4 +1,4 @@
-package com.example.trackingbot.dto.response;
+package com.example.trackingbot.model;
 
 public record SignalScore(
         String symbol,

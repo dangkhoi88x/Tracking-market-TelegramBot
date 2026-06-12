@@ -10,6 +10,17 @@ services:
       - "5432:5432"
     volumes:
       - tracking_postgres_data:/var/lib/postgresql/data
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: tracking-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: tracking_bot
+      RABBITMQ_DEFAULT_PASS: tracking_bot_password
+    volumes:
+      - tracking_rabbitmq_data:/var/lib/rabbitmq
 
   redis:
     image: redis:7
@@ -22,3 +33,4 @@ services:
 volumes:
   tracking_postgres_data:
   tracking_redis_data:
+  tracking_rabbitmq_data:

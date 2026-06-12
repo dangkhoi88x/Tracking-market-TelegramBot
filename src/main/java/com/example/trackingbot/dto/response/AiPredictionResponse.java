@@ -1,5 +1,7 @@
 package com.example.trackingbot.dto.response;
 
+import com.example.trackingbot.model.AiChartAnnotations;
+
 import java.util.List;
 
 public record AiPredictionResponse(

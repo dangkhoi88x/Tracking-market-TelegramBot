@@ -1,9 +1,9 @@
 package com.example.trackingbot.service.analysis;
 
-import com.example.trackingbot.dto.response.BreakoutSignal;
-import com.example.trackingbot.dto.response.OrderFlowAnalysis;
-import com.example.trackingbot.dto.response.TechnicalAnalysis;
-import com.example.trackingbot.dto.response.TrendlineAnalysis;
+import com.example.trackingbot.model.BreakoutSignal;
+import com.example.trackingbot.model.OrderFlowAnalysis;
+import com.example.trackingbot.model.TechnicalAnalysis;
+import com.example.trackingbot.model.TrendlineAnalysis;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

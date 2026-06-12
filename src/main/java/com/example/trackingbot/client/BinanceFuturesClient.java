@@ -1,8 +1,8 @@
 package com.example.trackingbot.client;
 
-import com.example.trackingbot.dto.response.BinanceKline;
-import com.example.trackingbot.dto.response.AggTrade;
-import com.example.trackingbot.dto.response.OrderBookLevel;
+import com.example.trackingbot.model.BinanceKline;
+import com.example.trackingbot.model.AggTrade;
+import com.example.trackingbot.model.OrderBookLevel;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;

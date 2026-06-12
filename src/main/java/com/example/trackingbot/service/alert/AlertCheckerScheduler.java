@@ -1,9 +1,9 @@
 package com.example.trackingbot.service.alert;
 
-import com.example.trackingbot.dto.entity.CryptoAlert;
+import com.example.trackingbot.model.CryptoAlert;
 import com.example.trackingbot.dto.response.CryptoPrice;
 import com.example.trackingbot.service.crypto.CryptoPriceService;
-import com.example.trackingbot.service.telegram.TelegramMessageService;
+import com.example.trackingbot.service.notification.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +20,7 @@ public class AlertCheckerScheduler {
 
     private final AlertService alertService;
     private final CryptoPriceService cryptoPriceService;
-    private final TelegramMessageService telegramMessageService;
+    private final NotificationPublisher notificationPublisher;
 
     @Scheduled(fixedRate = 60_000, initialDelay = 10_000)
     public void checkActiveAlerts() {
@@ -28,7 +28,11 @@ public class AlertCheckerScheduler {
             try {
                 CryptoPrice currentPrice = cryptoPriceService.getCurrentPrice(alert.symbol());
                 if (isTriggered(currentPrice.priceUsd(), alert.operator(), alert.targetPrice())) {
-                    telegramMessageService.sendTextMessage(alert.chatId(), buildTriggeredMessage(alert, currentPrice));
+                    notificationPublisher.publishTelegramNotification(
+                            alert.chatId(),
+                            "ALERT_TRIGGERED",
+                            buildTriggeredMessage(alert, currentPrice)
+                    );
                     alertService.markTriggered(alert.id());
                 }
             } catch (Exception exception) {

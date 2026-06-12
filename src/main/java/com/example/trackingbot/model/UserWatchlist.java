@@ -1,4 +1,4 @@
-package com.example.trackingbot.dto.entity;
+package com.example.trackingbot.model;
 
 import java.util.List;
 

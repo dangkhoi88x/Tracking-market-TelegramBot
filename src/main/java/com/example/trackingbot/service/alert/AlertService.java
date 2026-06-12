@@ -1,6 +1,6 @@
 package com.example.trackingbot.service.alert;
 
-import com.example.trackingbot.dto.entity.CryptoAlert;
+import com.example.trackingbot.model.CryptoAlert;
 import com.example.trackingbot.entity.PriceAlertEntity;
 import com.example.trackingbot.repository.PriceAlertRepository;
 import com.example.trackingbot.service.crypto.CryptoPriceService;

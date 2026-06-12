@@ -1,6 +1,6 @@
 package com.example.trackingbot.service.watchlist;
 
-import com.example.trackingbot.dto.entity.UserWatchlist;
+import com.example.trackingbot.model.UserWatchlist;
 import com.example.trackingbot.entity.WatchlistItemEntity;
 import com.example.trackingbot.dto.response.CryptoPrice;
 import com.example.trackingbot.repository.WatchlistItemRepository;

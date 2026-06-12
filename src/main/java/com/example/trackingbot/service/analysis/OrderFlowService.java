@@ -1,9 +1,9 @@
 package com.example.trackingbot.service.analysis;
 
 import com.example.trackingbot.client.BinanceFuturesClient;
-import com.example.trackingbot.dto.response.AggTrade;
-import com.example.trackingbot.dto.response.OrderBookLevel;
-import com.example.trackingbot.dto.response.OrderFlowAnalysis;
+import com.example.trackingbot.model.AggTrade;
+import com.example.trackingbot.model.OrderBookLevel;
+import com.example.trackingbot.model.OrderFlowAnalysis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
