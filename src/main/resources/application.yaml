@@ -19,6 +19,7 @@ spring:
     password: ${RABBITMQ_PASSWORD:tracking_bot_password}
     listener:
       simple:
+        default-requeue-rejected: false
         retry:
           enabled: true
           initial-interval: 1s

@@ -140,7 +140,7 @@ public class WatchlistService {
     }
 
     @Transactional(readOnly = true)
-    private List<String> getSymbols(Long chatId) {
+    protected List<String> getSymbols(Long chatId) {
         return watchlistItemRepository.findByUserChatIdOrderBySymbolAsc(chatId)
                 .stream()
                 .map(WatchlistItemEntity::getSymbol)
