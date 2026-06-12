@@ -13,6 +13,8 @@ import com.example.trackingbot.service.crypto.TrendingCryptoService;
 import com.example.trackingbot.service.crypto.UsdtRateService;
 import com.example.trackingbot.service.crypto.ValueConversionService;
 import com.example.trackingbot.service.daily.DailyMarketSummaryService;
+import com.example.trackingbot.service.news.TelegramChannelNewsService;
+import com.example.trackingbot.service.news.TelegramChannelNewsService.NewsPage;
 import com.example.trackingbot.service.portfolio.PortfolioService;
 import com.example.trackingbot.service.watchlist.WatchlistService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class TelegramCommandService {
     private final SignalScoreService signalScoreService;
     private final AdminObservabilityService adminObservabilityService;
     private final UserCommandRateLimiter userCommandRateLimiter;
+    private final TelegramChannelNewsService telegramChannelNewsService;
 
     public void handleTextMessage(Long chatId, String text) {
         if (text == null || text.isBlank()) {
@@ -403,6 +406,20 @@ public class TelegramCommandService {
             return;
         }
 
+        if (isCommand(commandText, "/tintuc")) {
+            try {
+                sendNewsPage(chatId, 1);
+            } catch (Exception exception) {
+                log.warn("Failed to get news from Telegram channel", exception);
+                telegramMessageService.sendTextMessage(chatId, """
+                        Tam thoi khong lay duoc tin tuc tu @vncointele.
+
+                        Ban thu lai sau nhe.
+                        """);
+            }
+            return;
+        }
+
         if (isCommand(commandText, "/buy")) {
             String arguments = extractCommandArgument(commandText);
             if (arguments.isBlank() || cryptoPriceService.isHelpCommand(arguments)) {
@@ -596,6 +613,7 @@ public class TelegramCommandService {
                 /notif BTC 100000
                 /usdt
                 /trending
+                /tintuc
                 /daily_on
                 /daily_off
                 /buy BTC 0.1 65000
@@ -632,6 +650,7 @@ public class TelegramCommandService {
                 /notif BTC 100000 - nhac khi coin cham gia
                 /usdt - xem gia USDT/USD theo VND P2P
                 /trending - top 10 crypto dang trending
+                /tintuc - xem tin moi tu @vncointele
                 /daily_on - bat Daily Market Summary moi sang
                 /daily_off - tat Daily Market Summary
                 /buy BTC 0.1 65000 - luu lenh mua va tinh P/L
@@ -670,6 +689,7 @@ public class TelegramCommandService {
                 case "AI_CHART" -> handleAiChartCallback(chatId, parts);
                 case "WATCH" -> handleWatchCallback(chatId, parts);
                 case "ALERT_PROMPT" -> handleAlertPromptCallback(chatId, parts);
+                case "NEWS_PAGE" -> handleNewsPageCallback(chatId, parts);
                 default -> telegramMessageService.sendTextMessage(chatId, "Nut nay khong con duoc ho tro.");
             }
             telegramMessageService.answerCallbackQuery(callbackQueryId, "Done");
@@ -767,6 +787,29 @@ public class TelegramCommandService {
                 """.formatted(parts[1], parts[1], parts[1]));
     }
 
+    private void handleNewsPageCallback(Long chatId, String[] parts) {
+        if (parts.length != 2) {
+            sendNewsPage(chatId, 1);
+            return;
+        }
+
+        try {
+            sendNewsPage(chatId, Integer.parseInt(parts[1]));
+        } catch (NumberFormatException exception) {
+            sendNewsPage(chatId, 1);
+        }
+    }
+
+    private void sendNewsPage(Long chatId, int page) {
+        NewsPage newsPage = telegramChannelNewsService.getLatestNewsPage(page);
+        if (newsPage.totalPages() <= 1) {
+            telegramMessageService.sendTextMessage(chatId, newsPage.message());
+            return;
+        }
+
+        telegramMessageService.sendTextMessage(chatId, newsPage.message(), buildNewsKeyboard(newsPage));
+    }
+
     private InlineKeyboardMarkup buildCryptoKeyboard(String symbol) {
         return new InlineKeyboardMarkup(List.of(
                 List.of(
@@ -817,6 +860,27 @@ public class TelegramCommandService {
                                 currentType.equals("AI_CHART") ? "AI Chart" : "AI Chart",
                                 "AI_CHART:" + symbol + ":" + interval
                         )
+                )
+        ));
+    }
+
+    private InlineKeyboardMarkup buildNewsKeyboard(NewsPage newsPage) {
+        if (newsPage.page() <= 1) {
+            return new InlineKeyboardMarkup(List.of(
+                    List.of(new InlineKeyboardButton("Next", "NEWS_PAGE:" + (newsPage.page() + 1)))
+            ));
+        }
+
+        if (newsPage.page() >= newsPage.totalPages()) {
+            return new InlineKeyboardMarkup(List.of(
+                    List.of(new InlineKeyboardButton("Before", "NEWS_PAGE:" + (newsPage.page() - 1)))
+            ));
+        }
+
+        return new InlineKeyboardMarkup(List.of(
+                List.of(
+                        new InlineKeyboardButton("Before", "NEWS_PAGE:" + (newsPage.page() - 1)),
+                        new InlineKeyboardButton("Next", "NEWS_PAGE:" + (newsPage.page() + 1))
                 )
         ));
     }

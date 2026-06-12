@@ -158,6 +158,7 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 /crypto BTC
 /crypto_chart BTC 7d
 /trending
+/tintuc
 /usdt
 /val 1 BTC
 ```
