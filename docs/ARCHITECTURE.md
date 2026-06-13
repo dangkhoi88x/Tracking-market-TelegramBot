@@ -313,16 +313,39 @@ Giới hạn hiện tại:
 
 | Rule | Giới hạn |
 | --- | --- |
-| Tất cả command | 10 lần/phút/user |
-| `/ai` | 3 lần/phút/user |
-| `/ai_chart` | 2 lần/phút/user |
+| Tất cả command | 20 lần/phút/user |
 
 Rate limiter được kiểm tra trong `TelegramCommandService` trước khi command đi vào các service nghiệp vụ.
 
 Lý do thiết kế:
 
 - Chặn spam từ một user cụ thể.
-- Bảo vệ OpenAI quota.
+- Giảm áp lực ngắn hạn lên bot và API ngoài.
+
+## Subscription Plan Và AI Quota
+
+Các command dùng OpenAI được kiểm soát bằng quota theo plan trong PostgreSQL:
+
+| Plan | AI quota |
+| --- | --- |
+| FREE | 5 lượt/ngày |
+| PRO | 50 lượt/ngày |
+| ADMIN | Unlimited |
+
+Command:
+
+- `/my_usage`: user xem plan và số lượt AI đã dùng hôm nay.
+- `/admin_set_plan CHAT_ID PRO`: owner đổi plan cho user.
+
+Flow:
+
+```text
+/ai hoặc /ai_chart
+-> Redis rate limit chống spam
+-> SubscriptionService kiểm tra ai_usage_quotas
+-> Còn quota thì tăng used_count
+-> Gọi OpenAI
+```
 - Giảm tải cho CoinGecko, Binance và chart renderer.
 - Trả về thời gian chờ còn lại để user biết khi nào có thể thử lại.
 

@@ -61,7 +61,7 @@ public class WatchlistService {
     }
 
     public String getWatchlistMessage(Long chatId) {
-        List<String> symbols = getSymbols(chatId);
+        List<String> symbols = getUserSymbols(chatId);
 
         if (symbols.isEmpty()) {
             return """
@@ -140,7 +140,7 @@ public class WatchlistService {
     }
 
     @Transactional(readOnly = true)
-    protected List<String> getSymbols(Long chatId) {
+    public List<String> getUserSymbols(Long chatId) {
         return watchlistItemRepository.findByUserChatIdOrderBySymbolAsc(chatId)
                 .stream()
                 .map(WatchlistItemEntity::getSymbol)

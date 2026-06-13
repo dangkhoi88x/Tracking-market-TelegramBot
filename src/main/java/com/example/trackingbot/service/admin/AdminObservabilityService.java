@@ -1,25 +1,36 @@
 package com.example.trackingbot.service.admin;
 
 import com.example.trackingbot.config.TelegramBotProperties;
+import com.example.trackingbot.entity.CommandLogEntity;
+import com.example.trackingbot.repository.CommandLogRepository;
 import com.example.trackingbot.repository.DailySettingRepository;
 import com.example.trackingbot.repository.PortfolioPositionRepository;
 import com.example.trackingbot.repository.PriceAlertRepository;
 import com.example.trackingbot.repository.TelegramUserRepository;
 import com.example.trackingbot.repository.WatchlistItemRepository;
+import com.example.trackingbot.model.SubscriptionPlan;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AdminObservabilityService {
 
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter
+            .ofPattern("dd-MM HH:mm")
+            .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
     private static final List<String> CIRCUIT_BREAKERS = List.of(
             "coingecko",
             "binanceFutures",
@@ -37,6 +48,7 @@ public class AdminObservabilityService {
     private final DailySettingRepository dailySettingRepository;
     private final PortfolioPositionRepository portfolioPositionRepository;
     private final ThreadPoolMetricsService threadPoolMetricsService;
+    private final CommandLogRepository commandLogRepository;
 
     public String getHealthMessage(Long chatId) {
         String accessDeniedMessage = getAccessDeniedMessage(chatId);
@@ -76,6 +88,7 @@ public class AdminObservabilityService {
                 Admin Metrics
 
                 Users: %d
+                Plans: FREE %d | PRO %d | ADMIN %d
                 Watchlist items: %d
                 Active alerts: %d
                 Daily subscribers: %d
@@ -88,6 +101,9 @@ public class AdminObservabilityService {
                 %s
                 """.formatted(
                 telegramUserRepository.count(),
+                telegramUserRepository.countByPlan(SubscriptionPlan.FREE),
+                telegramUserRepository.countByPlan(SubscriptionPlan.PRO),
+                telegramUserRepository.countByPlan(SubscriptionPlan.ADMIN),
                 watchlistItemRepository.count(),
                 activeAlerts,
                 dailySubscribers,
@@ -95,6 +111,107 @@ public class AdminObservabilityService {
                 threadPoolMetricsService.buildMetricsMessage(),
                 buildCircuitBreakerMetrics()
         );
+    }
+
+    public String getTopCommandsMessage(Long chatId) {
+        String accessDeniedMessage = getAccessDeniedMessage(chatId);
+        if (accessDeniedMessage != null) {
+            return accessDeniedMessage;
+        }
+
+        Instant since = Instant.now().minus(Duration.ofDays(7));
+        List<CommandLogRepository.TopCommandProjection> commands = commandLogRepository.findTopCommandsSince(
+                since,
+                PageRequest.of(0, 10)
+        );
+
+        if (commands.isEmpty()) {
+            return "Chua co command log trong 7 ngay gan day.";
+        }
+
+        StringBuilder message = new StringBuilder("Top commands 7 ngay gan day:\n\n");
+        for (int index = 0; index < commands.size(); index++) {
+            CommandLogRepository.TopCommandProjection command = commands.get(index);
+            message.append("%d. %s: %d calls | ok %d | err %d | avg %.0fms%n".formatted(
+                    index + 1,
+                    command.getCommand(),
+                    command.getTotalCount(),
+                    command.getSuccessCount(),
+                    command.getErrorCount(),
+                    command.getAverageDurationMs() == null ? 0 : command.getAverageDurationMs()
+            ));
+        }
+
+        return message.toString().trim();
+    }
+
+    public String getErrorsMessage(Long chatId) {
+        String accessDeniedMessage = getAccessDeniedMessage(chatId);
+        if (accessDeniedMessage != null) {
+            return accessDeniedMessage;
+        }
+
+        List<CommandLogEntity> errors = commandLogRepository.findRecentErrors(PageRequest.of(0, 10));
+        if (errors.isEmpty()) {
+            return "Chua co command error nao duoc ghi nhan.";
+        }
+
+        StringBuilder message = new StringBuilder("Recent command errors:\n\n");
+        for (CommandLogEntity error : errors) {
+            message.append("%s | chat %d | %s | %dms%n%s%n%n".formatted(
+                    TIME_FORMATTER.format(error.getCreatedAt()),
+                    error.getChatId(),
+                    error.getCommand(),
+                    error.getDurationMs(),
+                    safeErrorMessage(error.getErrorMessage())
+            ));
+        }
+
+        return message.toString().trim();
+    }
+
+    public String getUsersMessage(Long chatId) {
+        String accessDeniedMessage = getAccessDeniedMessage(chatId);
+        if (accessDeniedMessage != null) {
+            return accessDeniedMessage;
+        }
+
+        Instant since = Instant.now().minus(Duration.ofDays(7));
+        List<CommandLogRepository.TopUserProjection> users = commandLogRepository.findTopUsersSince(
+                since,
+                PageRequest.of(0, 10)
+        );
+
+        StringBuilder message = new StringBuilder("""
+                Admin Users
+
+                Registered users: %d
+                Users with command logs: %d
+                Active users 7d: %d
+
+                Top active users 7d:
+                """.formatted(
+                telegramUserRepository.count(),
+                commandLogRepository.countDistinctUsers(),
+                commandLogRepository.countDistinctUsersSince(since)
+        ));
+
+        if (users.isEmpty()) {
+            message.append("Chua co user nao dung command trong 7 ngay gan day.");
+            return message.toString();
+        }
+
+        for (int index = 0; index < users.size(); index++) {
+            CommandLogRepository.TopUserProjection user = users.get(index);
+            message.append("%d. chat %d: %d commands | last %s%n".formatted(
+                    index + 1,
+                    user.getChatId(),
+                    user.getTotalCount(),
+                    TIME_FORMATTER.format(user.getLastCommandAt())
+            ));
+        }
+
+        return message.toString().trim();
     }
 
     private String getAccessDeniedMessage(Long chatId) {
@@ -154,5 +271,13 @@ public class AdminObservabilityService {
         }
 
         return builder.toString().stripTrailing();
+    }
+
+    private String safeErrorMessage(String errorMessage) {
+        if (errorMessage == null || errorMessage.isBlank()) {
+            return "No error message";
+        }
+
+        return errorMessage.length() <= 250 ? errorMessage : errorMessage.substring(0, 250) + "...";
     }
 }

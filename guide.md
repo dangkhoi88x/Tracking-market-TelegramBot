@@ -510,9 +510,7 @@ Ngoài Resilience4j cho API ngoài, project còn có rate limit theo từng user
 Ví dụ:
 
 ```text
-Mỗi user tối đa 10 command/phút
-/ai tối đa 3 lần/phút
-/ai_chart tối đa 2 lần/phút
+Mỗi user tối đa 20 command/phút
 ```
 
 Mục tiêu:
@@ -524,12 +522,47 @@ Mục tiêu:
 Câu thuyết trình mẫu:
 
 ```text
-Em tách rate limit thành hai lớp. Resilience4j bảo vệ khi gọi API ngoài, còn
-UserCommandRateLimiter bảo vệ bot khỏi user spam command. Đặc biệt các command dùng
-OpenAI được giới hạn thấp hơn vì có chi phí.
+Em tách rate limit và quota thành hai lớp. UserCommandRateLimiter dùng Redis để chống
+spam theo phút, còn SubscriptionService dùng PostgreSQL để quản lý quota AI theo plan.
+Cách này giúp user PRO có quota cao hơn nhưng bot vẫn được bảo vệ khỏi spam ngắn hạn.
 ```
 
-## 15. Scheduler Và Async Skill
+## 15. Subscription Plan Và Usage Quota
+
+Project có mô hình plan đơn giản:
+
+```text
+FREE: 5 AI/ngày
+PRO: 50 AI/ngày
+ADMIN: unlimited
+```
+
+Command:
+
+```text
+/my_usage
+/admin_set_plan CHAT_ID PRO
+```
+
+Flow xử lý:
+
+```text
+User gọi /ai hoặc /ai_chart
+-> TelegramCommandService kiểm tra Redis rate limit
+-> SubscriptionService kiểm tra quota hôm nay trong PostgreSQL
+-> Nếu còn quota thì tăng used_count
+-> Sau đó mới gọi OpenAI
+```
+
+Câu thuyết trình mẫu:
+
+```text
+Vì OpenAI là tài nguyên có chi phí, em không chỉ dùng rate limit theo phút mà còn xây
+dựng usage quota theo subscription plan. Quota được lưu DB nên restart app không mất,
+admin có thể nâng user từ FREE lên PRO bằng command riêng.
+```
+
+## 16. Scheduler Và Async Skill
 
 Scheduler dùng cho việc chạy tự động.
 

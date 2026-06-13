@@ -35,41 +35,6 @@ class UserCommandRateLimiterTest {
     }
 
     @Test
-    void checkAllowed_shouldLimitAiCommandToThreeRequestsPerDay() {
-        MutableClock clock = new MutableClock();
-        UserCommandRateLimiter limiter = new UserCommandRateLimiter(new InMemoryRateLimitStore(), clock);
-        Long chatId = 123L;
-
-        assertThat(limiter.checkAllowed(chatId, "/ai BTC").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai ETH").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai SOL").allowed()).isTrue();
-
-        UserCommandRateLimiter.RateLimitResult result = limiter.checkAllowed(chatId, "/ai BNB");
-
-        assertThat(result.allowed()).isFalse();
-        assertThat(result.ruleName()).isEqualTo("AI analysis");
-        assertThat(result.maxRequests()).isEqualTo(3);
-        assertThat(result.windowLabel()).isEqualTo("ngay");
-    }
-
-    @Test
-    void checkAllowed_shouldLimitAiChartCommandToTwoRequestsPerDay() {
-        MutableClock clock = new MutableClock();
-        UserCommandRateLimiter limiter = new UserCommandRateLimiter(new InMemoryRateLimitStore(), clock);
-        Long chatId = 123L;
-
-        assertThat(limiter.checkAllowed(chatId, "/ai_chart BTC").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai_chart ETH").allowed()).isTrue();
-
-        UserCommandRateLimiter.RateLimitResult result = limiter.checkAllowed(chatId, "/ai_chart SOL");
-
-        assertThat(result.allowed()).isFalse();
-        assertThat(result.ruleName()).isEqualTo("AI chart");
-        assertThat(result.maxRequests()).isEqualTo(2);
-        assertThat(result.windowLabel()).isEqualTo("ngay");
-    }
-
-    @Test
     void checkAllowed_shouldAllowCommandsAgainAfterWindowExpires() {
         MutableClock clock = new MutableClock();
         UserCommandRateLimiter limiter = new UserCommandRateLimiter(new InMemoryRateLimitStore(), clock);
@@ -86,7 +51,7 @@ class UserCommandRateLimiterTest {
     }
 
     @Test
-    void checkAllowed_shouldNotConsumeAiQuotaWhenGlobalRuleRejects() {
+    void checkAllowed_shouldUseGlobalLimitForAiCommandsBecauseSubscriptionHandlesDailyQuota() {
         MutableClock clock = new MutableClock();
         UserCommandRateLimiter limiter = new UserCommandRateLimiter(new InMemoryRateLimitStore(), clock);
         Long chatId = 123L;
@@ -100,9 +65,7 @@ class UserCommandRateLimiterTest {
         clock.advance(Duration.ofSeconds(61));
 
         assertThat(limiter.checkAllowed(chatId, "/ai BTC").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai ETH").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai SOL").allowed()).isTrue();
-        assertThat(limiter.checkAllowed(chatId, "/ai BNB").allowed()).isFalse();
+        assertThat(limiter.checkAllowed(chatId, "/ai_chart ETH").allowed()).isTrue();
     }
 
     private static class MutableClock extends Clock {

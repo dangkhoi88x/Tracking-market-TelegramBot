@@ -233,6 +233,7 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```text
 /ai BTC
 /ai_chart BTC
+/my_usage
 ```
 
 ### Watchlist
@@ -249,9 +250,28 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 
 ```text
 /alert BTC > 70000
+/alert_builder
 /notif BTC 100000
 /myalerts
 /delete_alert ALERT_ID
+/my_notifications
+```
+
+Bot cung ho tro tao alert bang cau tu nhien:
+
+```text
+nhac toi khi btc vuot 70000
+bao toi luc ethereum duoi 3.5k
+```
+
+Bot cung ho tro mot so command tu nhien, khong can dau `/`:
+
+```text
+gia btc
+ve chart eth 7 ngay
+mua btc gia 65000
+mua btc 0.1 gia 65k
+ban sol gia 200
 ```
 
 ### Portfolio
@@ -275,6 +295,10 @@ curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```text
 /admin_health
 /admin_metrics
+/admin_top_commands
+/admin_errors
+/admin_users
+/admin_set_plan CHAT_ID PRO
 ```
 
 Admin commands chỉ hoạt động khi `TELEGRAM_ADMIN_CHAT_ID` trùng với `chat_id` của owner.
@@ -392,15 +416,11 @@ Rate limit được lưu trong Redis để không mất quota state khi restart 
 Giới hạn hiện tại:
 
 - Command thường: tối đa 20 command/phút/user.
-- `/ai`: tối đa 3 lần/ngày/user.
-- `/ai_chart`: tối đa 2 lần/ngày/user.
 
 Key Redis:
 
 ```text
 rate_limit:{chatId}:*
-rate_limit:{chatId}:/ai
-rate_limit:{chatId}:/ai_chart
 ```
 
 Implementation dùng Redis sorted set + Lua script để check nhiều rule atomically:
@@ -412,9 +432,30 @@ clean expired timestamps -> count current requests -> reject or increment all ma
 Mục tiêu:
 
 - Tránh user spam command.
-- Giảm rủi ro tốn quota OpenAI.
 - Giảm áp lực lên external APIs.
 - Trả message rõ ràng cho user biết cần chờ bao lâu trước khi thử lại.
+
+## Subscription Plan Và AI Quota
+
+Các command dùng OpenAI (`/ai`, `/ai_chart`) dùng quota theo ngày trong PostgreSQL:
+
+- `FREE`: 5 lượt AI/ngày.
+- `PRO`: 50 lượt AI/ngày.
+- `ADMIN`: unlimited.
+
+Command user:
+
+```text
+/my_usage
+```
+
+Command owner:
+
+```text
+/admin_set_plan CHAT_ID PRO
+```
+
+Quota reset theo ngày Việt Nam và được lưu trong bảng `ai_usage_quotas`.
 
 ## Scheduler Và Async Processing
 
@@ -464,6 +505,30 @@ Daily subscribers
 Portfolio positions
 Circuit Breakers
 Thread Pools
+```
+
+`/admin_top_commands` trả top command trong 7 ngày gần đây:
+
+```text
+Top commands 7 ngay gan day:
+1. /crypto: 120 calls | ok 118 | err 2 | avg 80ms
+```
+
+`/admin_errors` trả các command lỗi gần đây:
+
+```text
+Recent command errors:
+13-06 12:10 | chat 123 | /ai | 500ms
+RATE_LIMIT: AI analysis max 3/ngay retry after 86400s
+```
+
+`/admin_users` trả thống kê user activity:
+
+```text
+Registered users
+Users with command logs
+Active users 7d
+Top active users 7d
 ```
 
 ## Security Notes

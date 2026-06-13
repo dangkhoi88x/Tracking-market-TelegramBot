@@ -22,6 +22,7 @@ public class NotificationConsumer {
 
     private final TelegramMessageService telegramMessageService;
     private final NotificationRetryPublisher notificationRetryPublisher;
+    private final NotificationHistoryService notificationHistoryService;
 
     @RabbitListener(queues = {
             RabbitMqConfig.TELEGRAM_NOTIFICATION_QUEUE,
@@ -50,6 +51,7 @@ public class NotificationConsumer {
                     telegramNotification.chatId(),
                     telegramNotification.text()
             );
+            notificationHistoryService.recordSent(telegramNotification);
         } catch (Exception exception) {
             handleFailedNotification(telegramNotification, queueName, routingKey, retryAttempt, exception);
             return;

@@ -1,5 +1,6 @@
 package com.example.trackingbot.entity;
 
+import com.example.trackingbot.model.SubscriptionPlan;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -27,6 +28,10 @@ public class TelegramUser {
     private String firstName;
 
     private String lastName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private SubscriptionPlan plan = SubscriptionPlan.FREE;
 
     private Instant createdAt;
 

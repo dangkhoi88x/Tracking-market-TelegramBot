@@ -25,10 +25,7 @@ public class UserCommandRateLimiter {
             "Tat ca lenh",
             "phut"
     );
-    private static final Map<String, RateLimitRule> COMMAND_RULES = Map.of(
-            "/ai", new RateLimitRule("/ai", 3, Duration.ofDays(1), "AI analysis", "ngay"),
-            "/ai_chart", new RateLimitRule("/ai_chart", 2, Duration.ofDays(1), "AI chart", "ngay")
-    );
+    private static final Map<String, RateLimitRule> COMMAND_RULES = Map.of();
 
     private final RateLimitStore rateLimitStore;
     private final Clock clock;
