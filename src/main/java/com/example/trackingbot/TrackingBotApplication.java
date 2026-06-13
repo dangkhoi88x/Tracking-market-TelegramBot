@@ -7,6 +7,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import com.example.trackingbot.config.CleanupProperties;
 import com.example.trackingbot.config.IdeaChartProperties;
 import com.example.trackingbot.config.OpenAiProperties;
 import com.example.trackingbot.config.TelegramBotProperties;
@@ -18,7 +19,8 @@ import com.example.trackingbot.config.TelegramBotProperties;
 @EnableConfigurationProperties({
         TelegramBotProperties.class,
         IdeaChartProperties.class,
-        OpenAiProperties.class
+        OpenAiProperties.class,
+        CleanupProperties.class
 })
 public class TrackingBotApplication {
 

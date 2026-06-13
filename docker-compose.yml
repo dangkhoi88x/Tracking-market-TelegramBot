@@ -1,36 +1,123 @@
+name: tracking-market-bot
+
 services:
-  postgres:
-    image: postgres:16
-    container_name: tracking-postgres
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracking-market-telegrambot:latest
+    container_name: tracking-bot-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
-      POSTGRES_DB: tracking_bot
-      POSTGRES_USER: tracking_bot
-      POSTGRES_PASSWORD: tracking_bot_password
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      POSTGRES_DB: ${POSTGRES_DB:-tracking_bot}
+      POSTGRES_USER: ${POSTGRES_USER:-tracking_bot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracking_bot_password}
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tracking_bot}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-tracking_bot}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-tracking_bot_password}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
+      CLEANUP_ENABLED: ${CLEANUP_ENABLED:-true}
+      CLEANUP_INACTIVE_ALERT_RETENTION: ${CLEANUP_INACTIVE_ALERT_RETENTION:-30d}
+      CLEANUP_CHART_FILE_RETENTION: ${CLEANUP_CHART_FILE_RETENTION:-1d}
+      CLEANUP_DAILY_CRON: "${CLEANUP_DAILY_CRON:-0 20 3 * * *}"
+      CLEANUP_NEWS_CACHE_CRON: "${CLEANUP_NEWS_CACHE_CRON:-0 0 * * * *}"
+      CLEANUP_ZONE: ${CLEANUP_ZONE:-Asia/Ho_Chi_Minh}
+      IDEA_CHART_NODE_BIN: node
+      IDEA_CHART_RENDERER_SCRIPT: scripts/render-idea-chart.js
+      IDEA_CHART_OUTPUT_DIR: /tmp/trackingbot-idea-charts
     ports:
-      - "5432:5432"
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - tracking-bot-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tracking_bot}
+      POSTGRES_USER: ${POSTGRES_USER:-tracking_bot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracking_bot_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - tracking_postgres_data:/var/lib/postgresql/data
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: tracking-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: tracking_bot
-      RABBITMQ_DEFAULT_PASS: tracking_bot_password
-    volumes:
-      - tracking_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tracking_bot} -d ${POSTGRES_DB:-tracking_bot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tracking-bot-network
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: tracking-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - tracking_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - tracking-bot-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: tracking-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-tracking_bot}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tracking_bot_password}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - tracking_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tracking-bot-network
 
 volumes:
   tracking_postgres_data:
   tracking_redis_data:
   tracking_rabbitmq_data:
+
+networks:
+  tracking-bot-network:
+    driver: bridge

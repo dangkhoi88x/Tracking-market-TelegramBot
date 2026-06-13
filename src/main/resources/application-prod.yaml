@@ -1,0 +1,39 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://postgres:5432/tracking_bot}
+    username: ${POSTGRES_USER:tracking_bot}
+    password: ${POSTGRES_PASSWORD:tracking_bot_password}
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:tracking_bot}
+    password: ${RABBITMQ_PASSWORD:tracking_bot_password}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN

@@ -903,11 +903,12 @@ public class TelegramCommandService {
         return """
                 Ban dang gui lenh qua nhanh.
 
-                Gioi han: %s toi da %d lan/phut.
+                Gioi han: %s toi da %d lan/%s.
                 Thu lai sau khoang %d giay.
                 """.formatted(
                 result.ruleName(),
                 result.maxRequests(),
+                result.windowLabel(),
                 result.retryAfterSeconds()
         );
     }

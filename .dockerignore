@@ -1,0 +1,15 @@
+.git
+.idea
+.vscode
+.env
+.env.*
+!.env.example
+target
+node_modules
+npm-debug.log
+Dockerfile
+docker-compose*.yml
+README.md
+architecture.md
+guide.md
+docs

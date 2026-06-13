@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -45,6 +46,8 @@ public class PriceAlertEntity {
 
     private Instant createdAt;
 
+    private Instant updatedAt;
+
     private Instant triggeredAt;
 
     private Instant deletedAt;
@@ -60,16 +63,27 @@ public class PriceAlertEntity {
 
     @PrePersist
     void prePersist() {
-        createdAt = Instant.now();
+        Instant now = Instant.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = Instant.now();
     }
 
     public void markTriggered() {
+        Instant now = Instant.now();
         active = false;
-        triggeredAt = Instant.now();
+        triggeredAt = now;
+        updatedAt = now;
     }
 
     public void markDeleted() {
+        Instant now = Instant.now();
         active = false;
-        deletedAt = Instant.now();
+        deletedAt = now;
+        updatedAt = now;
     }
 }

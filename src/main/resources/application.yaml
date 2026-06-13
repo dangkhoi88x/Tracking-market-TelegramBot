@@ -60,6 +60,14 @@ openai:
   model: ${OPENAI_MODEL:gpt-5-mini}
   max-output-tokens: ${OPENAI_MAX_OUTPUT_TOKENS:2200}
 
+cleanup:
+  enabled: ${CLEANUP_ENABLED:true}
+  inactive-alert-retention: ${CLEANUP_INACTIVE_ALERT_RETENTION:30d}
+  chart-file-retention: ${CLEANUP_CHART_FILE_RETENTION:1d}
+  daily-cron: "${CLEANUP_DAILY_CRON:0 20 3 * * *}"
+  news-cache-cron: "${CLEANUP_NEWS_CACHE_CRON:0 0 * * * *}"
+  zone: ${CLEANUP_ZONE:Asia/Ho_Chi_Minh}
+
 resilience4j:
   retry:
     configs:

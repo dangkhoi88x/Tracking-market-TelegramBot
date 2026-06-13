@@ -74,7 +74,13 @@ src/main/java/com/example/trackingbot
 
 ## Cấu Hình Môi Trường
 
-Tạo file `.env` ở root project. Không commit file này lên GitHub.
+Tạo file `.env` ở root project. Có thể bắt đầu từ file mẫu:
+
+```bash
+cp .env.example .env
+```
+
+Không commit file `.env` thật lên GitHub.
 
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
@@ -91,12 +97,12 @@ POSTGRES_PASSWORD=tracking_bot_password
 
 `.gitignore` đã chặn `.env`, `.env.*`, `target/`, `node_modules/` và `.idea/`.
 
-## Chạy Local
+## Chạy Local Bằng IntelliJ
 
-### 1. Chạy PostgreSQL và Redis
+### 1. Chạy PostgreSQL, Redis và RabbitMQ
 
 ```bash
-docker compose up -d
+docker compose up -d postgres redis rabbitmq
 ```
 
 Kiểm tra container:
@@ -121,13 +127,61 @@ npm run install:browsers
 ### 4. Chạy Spring Boot
 
 ```bash
-./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
 App mặc định chạy ở:
 
 ```text
 http://localhost:8080
+```
+
+## Chạy Full Stack Bằng Docker Compose
+
+Docker Compose production-local sẽ chạy đủ:
+
+```text
+Spring Boot app
+PostgreSQL
+Redis
+RabbitMQ Management
+```
+
+Chạy toàn bộ hệ thống:
+
+```bash
+docker compose up -d
+```
+
+Sau khi sửa code và muốn build lại image app:
+
+```bash
+docker compose up -d --build
+```
+
+Xem log app:
+
+```bash
+docker compose logs -f app
+```
+
+Kiểm tra health:
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+RabbitMQ UI:
+
+```text
+http://localhost:15672
+```
+
+Tài khoản lấy từ `.env`:
+
+```text
+RABBITMQ_USER
+RABBITMQ_PASSWORD
 ```
 
 ## Cấu Hình Telegram Webhook
@@ -259,6 +313,32 @@ Xem tài liệu chi tiết tại [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Database
 
+Project dùng Flyway để quản lý schema PostgreSQL.
+
+Production DB hiện có:
+
+- `created_at` / `updated_at` cho các bảng nghiệp vụ chính.
+- Index cho các query thường dùng theo `symbol`, `active`, `user_id`.
+- `telegram_users.chat_id` đã có unique constraint nên PostgreSQL tự tạo index.
+- Cleanup job xóa alert inactive cũ, file chart tạm và news cache.
+
+Các biến cấu hình cleanup:
+
+```env
+CLEANUP_ENABLED=true
+CLEANUP_INACTIVE_ALERT_RETENTION=30d
+CLEANUP_CHART_FILE_RETENTION=1d
+CLEANUP_DAILY_CRON="0 20 3 * * *"
+CLEANUP_NEWS_CACHE_CRON="0 0 * * * *"
+CLEANUP_ZONE=Asia/Ho_Chi_Minh
+```
+
+Mặc định:
+
+- Alert inactive cũ hơn 30 ngày sẽ bị xóa.
+- File chart tạm trong `idea-chart.output-dir` cũ hơn 1 ngày sẽ bị xóa.
+- News cache `telegramChannelNews` được clear mỗi giờ.
+
 Database được quản lý bằng Flyway migration.
 
 Các bảng chính:
@@ -307,12 +387,27 @@ Các pattern đang dùng:
 ## User Command Rate Limit
 
 Ngoài Resilience4j cho external APIs, bot còn có rate limit theo từng Telegram user.
+Rate limit được lưu trong Redis để không mất quota state khi restart app.
 
 Giới hạn hiện tại:
 
-- Mỗi user tối đa 10 command/phút.
-- `/ai` tối đa 3 lần/phút.
-- `/ai_chart` tối đa 2 lần/phút.
+- Command thường: tối đa 20 command/phút/user.
+- `/ai`: tối đa 3 lần/ngày/user.
+- `/ai_chart`: tối đa 2 lần/ngày/user.
+
+Key Redis:
+
+```text
+rate_limit:{chatId}:*
+rate_limit:{chatId}:/ai
+rate_limit:{chatId}:/ai_chart
+```
+
+Implementation dùng Redis sorted set + Lua script để check nhiều rule atomically:
+
+```text
+clean expired timestamps -> count current requests -> reject or increment all matched keys
+```
 
 Mục tiêu:
 

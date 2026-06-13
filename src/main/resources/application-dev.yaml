@@ -1,0 +1,29 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/tracking_bot}
+    username: ${POSTGRES_USER:tracking_bot}
+    password: ${POSTGRES_PASSWORD:tracking_bot_password}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:tracking_bot}
+    password: ${RABBITMQ_PASSWORD:tracking_bot_password}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,6 +38,8 @@ public class WatchlistItemEntity {
 
     private Instant createdAt;
 
+    private Instant updatedAt;
+
     public WatchlistItemEntity(TelegramUser user, String symbol) {
         this.user = user;
         this.symbol = symbol;
@@ -44,6 +47,13 @@ public class WatchlistItemEntity {
 
     @PrePersist
     void prePersist() {
-        createdAt = Instant.now();
+        Instant now = Instant.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = Instant.now();
     }
 }

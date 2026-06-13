@@ -1,36 +1,45 @@
 package com.example.trackingbot.service.telegram;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @Service
 public class UserCommandRateLimiter {
 
-    private static final Duration WINDOW = Duration.ofMinutes(1);
-    private static final RateLimitRule GLOBAL_RULE = new RateLimitRule("*", 10, "Tat ca lenh");
+    private static final Logger log = LoggerFactory.getLogger(UserCommandRateLimiter.class);
+
+    private static final RateLimitRule GLOBAL_RULE = new RateLimitRule(
+            "*",
+            20,
+            Duration.ofMinutes(1),
+            "Tat ca lenh",
+            "phut"
+    );
     private static final Map<String, RateLimitRule> COMMAND_RULES = Map.of(
-            "/ai", new RateLimitRule("/ai", 3, "AI analysis"),
-            "/ai_chart", new RateLimitRule("/ai_chart", 2, "AI chart")
+            "/ai", new RateLimitRule("/ai", 3, Duration.ofDays(1), "AI analysis", "ngay"),
+            "/ai_chart", new RateLimitRule("/ai_chart", 2, Duration.ofDays(1), "AI chart", "ngay")
     );
 
+    private final RateLimitStore rateLimitStore;
     private final Clock clock;
-    private final ConcurrentMap<Long, UserRateLimitState> userStates = new ConcurrentHashMap<>();
 
-    public UserCommandRateLimiter() {
-        this(Clock.systemUTC());
+    @Autowired
+    public UserCommandRateLimiter(RateLimitStore rateLimitStore) {
+        this(rateLimitStore, Clock.systemUTC());
     }
 
-    UserCommandRateLimiter(Clock clock) {
+    UserCommandRateLimiter(RateLimitStore rateLimitStore, Clock clock) {
+        this.rateLimitStore = rateLimitStore;
         this.clock = clock;
     }
 
@@ -40,66 +49,69 @@ public class UserCommandRateLimiter {
             return RateLimitResult.allow();
         }
 
-        UserRateLimitState state = userStates.computeIfAbsent(chatId, ignored -> new UserRateLimitState());
-        Instant now = Instant.now(clock);
         List<RateLimitRule> rules = buildRules(command);
+        List<RateLimitStore.RateLimitStoreRequest> requests = buildStoreRequests(chatId, rules);
 
-        synchronized (state) {
-            for (RateLimitRule rule : rules) {
-                ArrayDeque<Instant> timestamps = state.timestampsByRule.computeIfAbsent(rule.key(), ignored -> new ArrayDeque<>());
-                removeExpired(timestamps, now);
+        try {
+            RateLimitStore.RateLimitStoreResult storeResult = rateLimitStore.checkAndIncrement(requests);
+            if (storeResult.allowed()) {
+                return RateLimitResult.allow();
             }
 
-            RateLimitResult rejectedResult = findRejectedResult(state, rules, now);
-            if (!rejectedResult.allowed()) {
-                return rejectedResult;
-            }
-
-            for (RateLimitRule rule : rules) {
-                state.timestampsByRule.get(rule.key()).addLast(now);
-            }
+            RateLimitRule rejectedRule = rules.get(storeResult.rejectedIndex());
+            return RateLimitResult.reject(
+                    rejectedRule.label(),
+                    rejectedRule.maxRequests(),
+                    rejectedRule.windowLabel(),
+                    storeResult.retryAfterSeconds()
+            );
+        } catch (RuntimeException exception) {
+            return handleRateLimitStoreFailure(command, exception);
         }
-
-        return RateLimitResult.allow();
     }
 
     private List<RateLimitRule> buildRules(String command) {
         List<RateLimitRule> rules = new ArrayList<>();
+        rules.add(GLOBAL_RULE);
+
         RateLimitRule commandRule = COMMAND_RULES.get(command);
         if (commandRule != null) {
             rules.add(commandRule);
         }
-        rules.add(GLOBAL_RULE);
 
         return rules;
     }
 
-    private RateLimitResult findRejectedResult(UserRateLimitState state, List<RateLimitRule> rules, Instant now) {
-        for (RateLimitRule rule : rules) {
-            ArrayDeque<Instant> timestamps = state.timestampsByRule.get(rule.key());
-            if (timestamps.size() >= rule.maxRequests()) {
-                return RateLimitResult.reject(rule.label(), rule.maxRequests(), calculateRetryAfterSeconds(timestamps, now));
-            }
+    private List<RateLimitStore.RateLimitStoreRequest> buildStoreRequests(Long chatId, List<RateLimitRule> rules) {
+        Instant now = Instant.now(clock);
+        return rules.stream()
+                .map(rule -> new RateLimitStore.RateLimitStoreRequest(
+                        buildRedisKey(chatId, rule.key()),
+                        rule.maxRequests(),
+                        rule.window(),
+                        now
+                ))
+                .toList();
+    }
+
+    private RateLimitResult handleRateLimitStoreFailure(String command, RuntimeException exception) {
+        RateLimitRule commandRule = COMMAND_RULES.get(command);
+        if (commandRule != null) {
+            log.error("Redis rate limiter failed for protected command {}", command, exception);
+            return RateLimitResult.reject(
+                    commandRule.label(),
+                    commandRule.maxRequests(),
+                    commandRule.windowLabel(),
+                    60
+            );
         }
 
+        log.warn("Redis rate limiter failed for normal command {}, allowing command", command, exception);
         return RateLimitResult.allow();
     }
 
-    private void removeExpired(ArrayDeque<Instant> timestamps, Instant now) {
-        Instant cutoff = now.minus(WINDOW);
-        while (!timestamps.isEmpty() && !timestamps.peekFirst().isAfter(cutoff)) {
-            timestamps.removeFirst();
-        }
-    }
-
-    private long calculateRetryAfterSeconds(ArrayDeque<Instant> timestamps, Instant now) {
-        Instant retryAt = timestamps.peekFirst().plus(WINDOW);
-        long retryAfterMillis = Duration.between(now, retryAt).toMillis();
-        if (retryAfterMillis <= 0) {
-            return 1;
-        }
-
-        return Math.max(1, (retryAfterMillis + 999) / 1000);
+    private String buildRedisKey(Long chatId, String ruleKey) {
+        return "rate_limit:%d:%s".formatted(chatId, ruleKey);
     }
 
     private String extractCommand(String commandText) {
@@ -114,27 +126,25 @@ public class UserCommandRateLimiter {
             boolean allowed,
             String ruleName,
             int maxRequests,
+            String windowLabel,
             long retryAfterSeconds
     ) {
 
         static RateLimitResult allow() {
-            return new RateLimitResult(true, "", 0, 0);
+            return new RateLimitResult(true, "", 0, "", 0);
         }
 
-        static RateLimitResult reject(String ruleName, int maxRequests, long retryAfterSeconds) {
-            return new RateLimitResult(false, ruleName, maxRequests, retryAfterSeconds);
+        static RateLimitResult reject(String ruleName, int maxRequests, String windowLabel, long retryAfterSeconds) {
+            return new RateLimitResult(false, ruleName, maxRequests, windowLabel, retryAfterSeconds);
         }
     }
 
     private record RateLimitRule(
             String key,
             int maxRequests,
-            String label
+            Duration window,
+            String label,
+            String windowLabel
     ) {
-    }
-
-    private static class UserRateLimitState {
-
-        private final Map<String, ArrayDeque<Instant>> timestampsByRule = new ConcurrentHashMap<>();
     }
 }
