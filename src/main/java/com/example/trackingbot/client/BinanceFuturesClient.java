@@ -20,19 +20,26 @@ public class BinanceFuturesClient {
 
     private final RestClient restClient;
 
+//    Gọi API Binance Futures
+//    Nhận JSON response
+//    Convert JSON thô thành model Java dễ dùng
+//    Trả dữ liệu cho service phân tích chart, order flow, AI, signal
+
+    // Creates the HTTP client for Binance Futures API calls.
     public BinanceFuturesClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl("https://fapi.binance.com")
                 .build();
     }
 
+    // Gets candlestick data for technical analysis and chart rendering/ ai market data
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
     public List<BinanceKline> getKlines(String symbol, String interval, int limit) {
         List<List<Object>> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/fapi/v1/klines")
+                        .path("/fapi/v1/klines") // https://fapi.binance.com/fapi/v1/klines GET /fapi/v1/klines?symbol=BTCUSDT&interval=4h&limit=100
                         .queryParam("symbol", symbol)
                         .queryParam("interval", interval)
                         .queryParam("limit", limit)
@@ -47,7 +54,7 @@ public class BinanceFuturesClient {
 
         List<BinanceKline> klines = response.stream()
                 .filter(row -> row.size() >= 10)
-                .map(this::toKline)
+                .map(this::toKline) //convert từng dòng tra ve list
                 .toList();
 
         if (klines.isEmpty()) {
@@ -57,6 +64,7 @@ public class BinanceFuturesClient {
         return klines;
     }
 
+    // Gets bid levels from the futures order book./ bid : buyers
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
@@ -64,6 +72,7 @@ public class BinanceFuturesClient {
         return getDepthSide(symbol, limit, "bids");
     }
 
+    // Gets ask levels from the futures order book./ ask: sellers
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
@@ -71,6 +80,7 @@ public class BinanceFuturesClient {
         return getDepthSide(symbol, limit, "asks");
     }
 
+    // Gets recent aggregated trades to estimate buy or sell pressure.
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
@@ -90,10 +100,11 @@ public class BinanceFuturesClient {
         }
 
         return response.stream()
-                .map(this::toAggTrade)
+                .map(this::toAggTrade)// convert into model
                 .toList();
     }
 
+    // Gets current open interest for a futures symbol.
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
@@ -114,6 +125,7 @@ public class BinanceFuturesClient {
         return toBigDecimal(response.get("openInterest"));
     }
 
+    // Gets the latest funding rate for a futures symbol.
     @Retry(name = "binanceFutures")
     @CircuitBreaker(name = "binanceFutures")
     @RateLimiter(name = "binanceFutures")
@@ -134,6 +146,7 @@ public class BinanceFuturesClient {
         return toBigDecimal(response.get("lastFundingRate"));
     }
 
+    // Reads one side of the order book: bids or asks.
     private List<OrderBookLevel> getDepthSide(String symbol, int limit, String side) {
         Map<String, Object> response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -157,6 +170,7 @@ public class BinanceFuturesClient {
                 .toList();
     }
 
+    // Converts one Binance kline row into the app kline model.
     private BinanceKline toKline(List<Object> row) {
         return new BinanceKline(
                 Instant.ofEpochMilli(toLong(row.get(0))),
@@ -169,6 +183,7 @@ public class BinanceFuturesClient {
         );
     }
 
+    // Converts one order book row into price and quantity.
     private OrderBookLevel toOrderBookLevel(List<Object> row) {
         return new OrderBookLevel(
                 toBigDecimal(row.get(0)),
@@ -176,6 +191,7 @@ public class BinanceFuturesClient {
         );
     }
 
+    // Converts one aggregated trade row into the app trade model.
     private AggTrade toAggTrade(Map<String, Object> row) {
         return new AggTrade(
                 toBigDecimal(row.get("p")),
@@ -184,6 +200,7 @@ public class BinanceFuturesClient {
         );
     }
 
+    // Safely converts JSON number values into Long.
     private Long toLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -192,6 +209,7 @@ public class BinanceFuturesClient {
         return Long.parseLong(value.toString());
     }
 
+    // Safely converts JSON number values into BigDecimal.
     private BigDecimal toBigDecimal(Object value) {
         return new BigDecimal(value.toString());
     }

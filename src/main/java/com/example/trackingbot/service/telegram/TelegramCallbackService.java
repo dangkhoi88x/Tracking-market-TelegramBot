@@ -24,7 +24,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class TelegramCallbackService {
-
+    // xu ly call back tu button
     private static final Logger log = LoggerFactory.getLogger(TelegramCallbackService.class);
 
     private final TelegramMessageService telegramMessageService;
@@ -50,7 +50,7 @@ public class TelegramCallbackService {
         }
 
         String[] parts = callbackData.split(":");
-        try {
+        try {//router cho button.
             switch (parts[0]) {
                 case "CHART" -> handleChartCallback(chatId, parts);
                 case "IDEA_CHART" -> handleIdeaChartCallback(chatId, parts);
