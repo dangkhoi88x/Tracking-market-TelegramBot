@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMqConfig {
+    // config notifcation flow async with rabbiqmq
     public static final String TELEGRAM_NOTIFICATION_EXCHANGE = "telegram.notification.exchange";
     public static final String TELEGRAM_NOTIFICATION_QUEUE = "telegram.notification.queue";
     public static final String TELEGRAM_NOTIFICATION_ROUTING_KEY = "telegram.notification";

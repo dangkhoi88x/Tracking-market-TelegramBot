@@ -20,12 +20,14 @@ public class BinanceP2PClient {
 
     private final RestClient restClient;
 
+    // Creates the HTTP client for Binance P2P API calls.
     public BinanceP2PClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl("https://p2p.binance.com")
                 .build();
     }
 
+    // Gets the average USDT/VND price from the first P2P ads.
     @Retry(name = "binanceP2P")
     @CircuitBreaker(name = "binanceP2P")
     @RateLimiter(name = "binanceP2P")

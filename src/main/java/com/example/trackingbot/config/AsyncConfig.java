@@ -13,19 +13,19 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
-
+        // config threadpool cho task async/ tac vu chay nen
     private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
     @Bean(name = "telegramTaskExecutor")
     public ThreadPoolTaskExecutor telegramTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(8);
-        executor.setQueueCapacity(100);
+        executor.setCorePoolSize(4); // thread co ban
+        executor.setMaxPoolSize(8); // max thread
+        executor.setQueueCapacity(100); // xep hang task toi da
         executor.setThreadNamePrefix("telegram-async-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy()); // full queue ->task sẽ chạy trên thread gọi hiện tại thay vì bị vứt bỏ.
         executor.initialize();
 
         return executor;

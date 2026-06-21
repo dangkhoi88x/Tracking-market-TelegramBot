@@ -4,11 +4,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "openai")
 public record OpenAiProperties(
+        // gom config tu yaml
         String apiKey,
         String baseUrl,
         String model,
         int maxOutputTokens
 ) {
+    // ham default
     public String baseUrlOrDefault() {
         return baseUrl == null || baseUrl.isBlank()
                 ? "https://api.openai.com"

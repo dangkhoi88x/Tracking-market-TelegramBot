@@ -30,6 +30,7 @@ public class OpenAiClient {
     private final OpenAiProperties properties;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // Creates the HTTP client for OpenAI API calls.
     public OpenAiClient(RestClient.Builder restClientBuilder, OpenAiProperties properties) {
         this.restClient = restClientBuilder
                 .baseUrl(properties.baseUrlOrDefault())
@@ -37,6 +38,7 @@ public class OpenAiClient {
         this.properties = properties;
     }
 
+    // Sends market data to OpenAI and parses the structured analysis response.
     @Retry(name = "openai")
     @CircuitBreaker(name = "openai")
     @RateLimiter(name = "openai")
@@ -60,6 +62,7 @@ public class OpenAiClient {
         }
     }
 
+    // Builds the OpenAI Responses API request body.
     private Map<String, Object> buildRequest(Map<String, Object> marketData) {
         return Map.of(
                 "model", properties.modelOrDefault(),
@@ -91,6 +94,7 @@ public class OpenAiClient {
         );
     }
 
+    // Builds the user prompt from computed market data.
     private String buildUserPrompt(Map<String, Object> marketData) {
         try {
             return """
@@ -114,6 +118,7 @@ public class OpenAiClient {
         }
     }
 
+    // Defines the strict JSON schema expected from OpenAI.
     private Map<String, Object> buildSchema() {
         Map<String, Object> stringField = Map.of("type", "string");
         Map<String, Object> stringListField = Map.of(
@@ -169,6 +174,7 @@ public class OpenAiClient {
         );
     }
 
+    // Defines chart annotation fields used by the AI chart renderer.
     private Map<String, Object> buildChartAnnotationsSchema() {
         Map<String, Object> numberField = Map.of("type", "number");
         return Map.of(
@@ -216,6 +222,7 @@ public class OpenAiClient {
         );
     }
 
+    // Extracts the text output from the OpenAI Responses API result.
     private String extractOutputText(Map<String, Object> response) {
         JsonNode root = objectMapper.valueToTree(response);
         JsonNode output = root.path("output");

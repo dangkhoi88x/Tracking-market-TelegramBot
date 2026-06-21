@@ -24,8 +24,8 @@ public class TelegramMessageService {
 
     private final RestClient restClient;
     private final TelegramBotProperties properties;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
+    private final ObjectMapper objectMapper = new ObjectMapper(); //convert Java object thành JSON string
+//build RestClient với base URL
     public TelegramMessageService(RestClient.Builder restClientBuilder, TelegramBotProperties properties) {
         this.restClient = restClientBuilder
                 .baseUrl("https://api.telegram.org/bot" + properties.token())
@@ -43,15 +43,15 @@ public class TelegramMessageService {
 
         sendSingleTextMessage(chatId, text);
     }
-
+//gọi API Telegram
     private void sendSingleTextMessage(Long chatId, String text) {
         restClient.post()
                 .uri("/sendMessage")
                 .body(new SendMessageRequest(chatId, text))
-                .retrieve()
-                .toBodilessEntity();
+                .retrieve() // thuc hien request
+                .toBodilessEntity(); // ko doc body response ,chi can biet success/fail
     }
-
+    // gửi text kèm incline button
     public void sendTextMessage(Long chatId, String text, InlineKeyboardMarkup replyMarkup) {
         restClient.post()
                 .uri("/sendMessage")
@@ -88,7 +88,7 @@ public class TelegramMessageService {
                 .retrieve()
                 .toBodilessEntity();
     }
-
+//convert Java object thành JSON string
     private String toJson(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -96,7 +96,7 @@ public class TelegramMessageService {
             throw new IllegalStateException("Cannot serialize Telegram reply markup", exception);
         }
     }
-
+//user bấm inline button, Telegram tạo một callbackQuery -> gọi api để telegram biết đã nhận click
     public void answerCallbackQuery(String callbackQueryId, String text) {
         restClient.post()
                 .uri("/answerCallbackQuery")

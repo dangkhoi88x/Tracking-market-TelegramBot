@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "idea-chart")
 public record IdeaChartProperties(
+        // render chart node/js
         String nodeBin,
         String nodePath,
         String rendererScript,

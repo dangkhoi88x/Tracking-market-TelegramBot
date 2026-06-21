@@ -6,6 +6,7 @@ import java.time.Duration;
 
 @ConfigurationProperties(prefix = "cleanup")
 public record CleanupProperties(
+        // config cho xoa du lieu cu
         Boolean enabled,
         Duration inactiveAlertRetention,
         Duration chartFileRetention

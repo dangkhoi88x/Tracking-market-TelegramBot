@@ -22,12 +22,14 @@ public class CoinGeckoClient {
 
     private final RestClient restClient;
 
+    // Creates the HTTP client for CoinGecko API calls.
     public CoinGeckoClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl("https://api.coingecko.com/api/v3")
                 .build();
     }
 
+    // Gets the latest price and 24h market data for one coin.
     @Retry(name = "coingecko")
     @CircuitBreaker(name = "coingecko")
     @RateLimiter(name = "coingecko")
@@ -49,6 +51,7 @@ public class CoinGeckoClient {
         );
     }
 
+    // Gets historical price points for chart rendering.
     @Retry(name = "coingecko")
     @CircuitBreaker(name = "coingecko")
     @RateLimiter(name = "coingecko")
@@ -76,6 +79,7 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    // Gets trending coins, then loads their price and volume data.
     @Retry(name = "coingecko")
     @CircuitBreaker(name = "coingecko")
     @RateLimiter(name = "coingecko")
@@ -111,6 +115,7 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    // Gets top coins ordered by market cap.
     @Retry(name = "coingecko")
     @CircuitBreaker(name = "coingecko")
     @RateLimiter(name = "coingecko")
@@ -120,6 +125,7 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    // Gets market coins by market cap for summary and ranking features.
     @Retry(name = "coingecko")
     @CircuitBreaker(name = "coingecko")
     @RateLimiter(name = "coingecko")
@@ -129,6 +135,7 @@ public class CoinGeckoClient {
                 .toList();
     }
 
+    // Calls /coins/markets for a specific list of coin ids.
     private List<CoinGeckoMarketData> getMarketData(List<String> coinIds) {
         if (coinIds.isEmpty()) {
             return List.of();
@@ -154,6 +161,7 @@ public class CoinGeckoClient {
         return List.of(response);
     }
 
+    // Calls /coins/markets without ids to get the top market cap list.
     private List<CoinGeckoMarketData> getMarketDataByMarketCap(int limit) {
         CoinGeckoMarketData[] response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -175,6 +183,7 @@ public class CoinGeckoClient {
         return List.of(response);
     }
 
+    // Converts CoinGecko market data into the app response model.
     private MarketCrypto toMarketCrypto(CoinGeckoMarketData marketData) {
         return new MarketCrypto(
                 marketData.id(),
@@ -216,6 +225,7 @@ public class CoinGeckoClient {
     ) {
     }
 
+    // Maps CoinGecko snake_case JSON fields to Java camelCase fields.
     private record CoinGeckoMarketData(
             String id,
             String symbol,
